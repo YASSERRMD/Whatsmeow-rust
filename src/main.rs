@@ -26,6 +26,10 @@ enum Commands {
     Register { jid: String },
     /// Attempt a connection using the configured session.
     Connect,
+    /// Disconnect from the simulated session while keeping local state.
+    Disconnect,
+    /// Send a message to a known contact while connected.
+    SendMessage { to: String, message: String },
     /// Print the current configuration.
     ShowConfig,
 }
@@ -60,6 +64,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(ClientError::NotRegistered) => {
                 eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(err) => return Err(err.into()),
+        },
+        Commands::Disconnect => match client.disconnect() {
+            Ok(_) => {
+                println!("Disconnected.");
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(err) => return Err(err.into()),
+        },
+        Commands::SendMessage { to, message } => match client.send_message(&to, &message) {
+            Ok(record) => {
+                println!(
+                    "Sent to {} at {}: {}",
+                    record.to, record.sent_at, record.body
+                );
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(ClientError::NotConnected) => {
+                eprintln!("Device not connected. Run the connect command first.");
             }
             Err(err) => return Err(err.into()),
         },
