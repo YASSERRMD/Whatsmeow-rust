@@ -69,11 +69,19 @@ impl SessionState {
     }
 
     /// Record a network handshake against the configured endpoint.
-    pub fn mark_network_handshake(&mut self, endpoint: impl Into<String>, latency_ms: u64) {
+    pub fn mark_network_handshake(
+        &mut self,
+        endpoint: impl Into<String>,
+        latency_ms: Option<u128>,
+        status_code: Option<u16>,
+        error: Option<String>,
+    ) {
         self.network = NetworkState {
             endpoint: endpoint.into(),
             last_handshake: Some(Utc::now()),
-            latency_ms: Some(latency_ms),
+            latency_ms,
+            status_code,
+            error,
         };
         self.push_event(EventKind::NetworkHandshaked(self.network.clone()));
     }
@@ -287,7 +295,9 @@ pub struct NetworkState {
     pub endpoint: String,
     #[serde(with = "chrono::serde::ts_seconds_option")]
     pub last_handshake: Option<DateTime<Utc>>,
-    pub latency_ms: Option<u64>,
+    pub latency_ms: Option<u128>,
+    pub status_code: Option<u16>,
+    pub error: Option<String>,
 }
 
 impl Default for NetworkState {
@@ -296,6 +306,8 @@ impl Default for NetworkState {
             endpoint: "https://chat.whatsmeow.test".into(),
             last_handshake: None,
             latency_ms: None,
+            status_code: None,
+            error: None,
         }
     }
 }

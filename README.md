@@ -10,8 +10,9 @@ with configuration, session management, and a basic CLI workflow.
 - A `WhatsmeowClient` façade with registration, connection/disconnection
   simulation, message logging, inbound message recording, pairing code
   issuance, delivery/read receipt simulation, event tracking, session
-  persistence to JSON, a lightweight networking handshake, QR login token
-  issuance/verification, and symmetric message encryption helpers.
+  persistence to JSON, an HTTP-backed networking handshake, QR login token
+  issuance/verification, and AES-GCM message encryption helpers derived from
+  your configured secret.
 - Command-line interface built with `clap` for registering a device, printing
   configuration, connecting/disconnecting, generating pairing codes, sending
   mock messages, recording received messages, and inspecting stored contacts or
@@ -58,12 +59,15 @@ identifier.
 
 ### Networking, QR, and encryption
 
-- Call `bootstrap-network` after registration to store endpoint and latency
-  measurements in the session, mirroring a network handshake.
+- Call `bootstrap-network` after registration to store endpoint, measured
+  latency, status code, and any error message in the session based on a real
+  HTTP request to the configured endpoint.
 - Call `generate-qr` followed by `verify-qr --token <token>` to simulate QR
   login token issuance and verification.
-- Messages are encrypted with a symmetric XOR+Base64 helper on send; use
-  `decrypt-message --id <message-id>` to view the decrypted body locally.
+- Messages are encrypted with AES-256-GCM using a key derived from your
+  `encryption_secret` (SHA-256). The stored ciphertext includes the nonce and
+  authentication tag; use `decrypt-message --id <message-id>` to view the
+  decrypted body locally.
 
 ## Notes
 - Networking, QR login, encryption, and persistence are implemented as local

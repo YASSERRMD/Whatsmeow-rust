@@ -15,3 +15,6 @@ chrono = { version = "0.4", features = ["serde"] }
 rand = "0.8"
 uuid = { version = "1", features = ["serde", "v4"] }
 base64 = "0.21"
+aes-gcm = { version = "0.10", features = ["std"] }
+sha2 = "0.10"
+ureq = { version = "2.9", default-features = false, features = ["tls", "json"] }
