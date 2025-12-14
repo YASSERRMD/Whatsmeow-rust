@@ -4,6 +4,10 @@
 //! with WhatsApp. This crate does not attempt to mirror every feature. Instead,
 //! it exposes a small set of building blocks—configuration, client state, and a
 //! simple client façade—that can be extended into a larger implementation.
+//!
+//! Networking, QR login, encryption, and persistence are implemented as local
+//! simulations to mirror upstream concerns. Replace them with production-grade
+//! protocol implementations before building on this scaffold.
 
 pub mod client;
 pub mod config;
