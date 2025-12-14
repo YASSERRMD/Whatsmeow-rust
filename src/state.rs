@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// Minimal session state used to simulate device registration and key storage.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -24,6 +25,10 @@ pub struct SessionState {
     pub pairing_code: Option<PairingCode>,
     /// Historical timeline of notable session events.
     pub events: Vec<SessionEvent>,
+    /// Networking metadata for simulated upstream connectivity.
+    pub network: NetworkState,
+    /// State of the most recent QR login flow.
+    pub qr_login: Option<QrLogin>,
 }
 
 impl SessionState {
@@ -63,6 +68,39 @@ impl SessionState {
         self.push_event(EventKind::Disconnected);
     }
 
+    /// Record a network handshake against the configured endpoint.
+    pub fn mark_network_handshake(&mut self, endpoint: impl Into<String>, latency_ms: u64) {
+        self.network = NetworkState {
+            endpoint: endpoint.into(),
+            last_handshake: Some(Utc::now()),
+            latency_ms: Some(latency_ms),
+        };
+        self.push_event(EventKind::NetworkHandshaked(self.network.clone()));
+    }
+
+    /// Store a QR login token and expiry timestamp.
+    pub fn set_qr_login(&mut self, token: impl Into<String>, expires_at: DateTime<Utc>) {
+        let login = QrLogin {
+            token: token.into(),
+            issued_at: Utc::now(),
+            expires_at,
+            verified: false,
+        };
+        self.qr_login = Some(login.clone());
+        self.push_event(EventKind::QrCodeGenerated(login));
+    }
+
+    /// Mark the QR login as verified once the token is used.
+    pub fn verify_qr_login(&mut self) -> Option<QrLogin> {
+        let cloned = {
+            let login = self.qr_login.as_mut()?;
+            login.verified = true;
+            login.clone()
+        };
+        self.push_event(EventKind::QrCodeVerified);
+        Some(cloned)
+    }
+
     /// Whether the client is marked as connected.
     pub fn is_connected(&self) -> bool {
         self.connected
@@ -94,9 +132,12 @@ impl SessionState {
         body: impl Into<String>,
     ) -> OutgoingMessage {
         let message = OutgoingMessage {
+            id: Uuid::new_v4(),
             to: to.into(),
             body: body.into(),
             sent_at: Utc::now(),
+            status: MessageStatus::Queued,
+            ciphertext: None,
         };
         self.outgoing_messages.push(message.clone());
         self.events
@@ -111,6 +152,7 @@ impl SessionState {
         body: impl Into<String>,
     ) -> IncomingMessage {
         let message = IncomingMessage {
+            id: Uuid::new_v4(),
             from: from.into(),
             body: body.into(),
             received_at: Utc::now(),
@@ -134,6 +176,22 @@ impl SessionState {
             .push(SessionEvent::new(EventKind::PairingCodeIssued));
     }
 
+    /// Update the status of an outgoing message and return the updated record.
+    pub fn mark_outgoing_status(
+        &mut self,
+        id: Uuid,
+        status: MessageStatus,
+    ) -> Option<&OutgoingMessage> {
+        let maybe_message = self.outgoing_messages.iter_mut().find(|msg| msg.id == id)?;
+        maybe_message.status = status.clone();
+        self.events
+            .push(SessionEvent::new(EventKind::MessageStatusChanged {
+                id,
+                status,
+            }));
+        Some(maybe_message)
+    }
+
     /// Add an event to the session timeline.
     pub fn push_event(&mut self, kind: EventKind) {
         self.events.push(SessionEvent::new(kind));
@@ -150,19 +208,34 @@ pub struct Contact {
 /// Outgoing message record that includes a timestamp for auditing.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OutgoingMessage {
+    #[serde(with = "uuid::serde::compact")]
+    pub id: Uuid,
     pub to: String,
     pub body: String,
     #[serde(with = "chrono::serde::ts_seconds")]
     pub sent_at: DateTime<Utc>,
+    pub status: MessageStatus,
+    /// Base64-encoded encrypted payload for the message body.
+    pub ciphertext: Option<String>,
 }
 
 /// Incoming message record to mirror real-world delivery.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IncomingMessage {
+    #[serde(with = "uuid::serde::compact")]
+    pub id: Uuid,
     pub from: String,
     pub body: String,
     #[serde(with = "chrono::serde::ts_seconds")]
     pub received_at: DateTime<Utc>,
+}
+
+/// Simplified message states to mimic delivery receipts.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum MessageStatus {
+    Queued,
+    Delivered,
+    Read,
 }
 
 /// Representation of a pairing code used for device linking.
@@ -199,6 +272,41 @@ pub enum EventKind {
     Connected,
     Disconnected,
     PairingCodeIssued,
+    NetworkHandshaked(NetworkState),
+    QrCodeGenerated(QrLogin),
+    QrCodeVerified,
     MessageSent(OutgoingMessage),
     MessageReceived(IncomingMessage),
+    MessageStatusChanged { id: Uuid, status: MessageStatus },
+    MessageEncrypted(Uuid),
+}
+
+/// Network connection metadata recorded per session.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct NetworkState {
+    pub endpoint: String,
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub last_handshake: Option<DateTime<Utc>>,
+    pub latency_ms: Option<u64>,
+}
+
+impl Default for NetworkState {
+    fn default() -> Self {
+        Self {
+            endpoint: "https://chat.whatsmeow.test".into(),
+            last_handshake: None,
+            latency_ms: None,
+        }
+    }
+}
+
+/// QR login token tracked for local verification.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct QrLogin {
+    pub token: String,
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub issued_at: DateTime<Utc>,
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub expires_at: DateTime<Utc>,
+    pub verified: bool,
 }

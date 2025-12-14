@@ -1,7 +1,8 @@
 use std::{fs, path::PathBuf};
 
 use clap::{Parser, Subcommand};
-use whatsmeow_rust::{ClientError, SessionState, WhatsmeowClient, WhatsmeowConfig};
+use uuid::Uuid;
+use whatsmeow_rust::{ClientError, MessageStatus, SessionState, WhatsmeowClient, WhatsmeowConfig};
 
 /// Reference CLI demonstrating the Whatsmeow Rust scaffolding.
 #[derive(Parser, Debug)]
@@ -26,20 +27,32 @@ enum Commands {
     Register { jid: String },
     /// Attempt a connection using the configured session.
     Connect,
+    /// Perform a simulated network handshake with the upstream endpoint.
+    BootstrapNetwork { endpoint: Option<String> },
     /// Disconnect from the simulated session while keeping local state.
     Disconnect,
     /// Send a message to a known contact while connected.
     SendMessage { to: String, message: String },
     /// Generate a mock pairing code for linking a device.
     RequestPairingCode,
+    /// Generate a QR login token to mirror native pairing.
+    GenerateQr,
+    /// Verify a previously generated QR token.
+    VerifyQr { token: String },
     /// Simulate receipt of a message while connected.
     ReceiveMessage { from: String, message: String },
+    /// Mark an outgoing message as delivered.
+    MarkDelivered { id: String },
+    /// Mark an outgoing message as read.
+    MarkRead { id: String },
     /// List known contacts.
     ListContacts,
     /// List stored message history.
     ListMessages,
     /// List the recorded lifecycle events.
     ListEvents,
+    /// Decrypt an outgoing message by id.
+    DecryptMessage { id: String },
     /// Print the current configuration.
     ShowConfig,
 }
@@ -77,6 +90,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(err) => return Err(err.into()),
         },
+        Commands::BootstrapNetwork { endpoint } => match client.bootstrap_network(endpoint) {
+            Ok(network) => {
+                println!(
+                    "Handshaked with {} (latency {:?} ms)",
+                    network.endpoint, network.latency_ms
+                );
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(err) => return Err(err.into()),
+        },
         Commands::Disconnect => match client.disconnect() {
             Ok(_) => {
                 println!("Disconnected.");
@@ -90,8 +116,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::SendMessage { to, message } => match client.send_message(&to, &message) {
             Ok(record) => {
                 println!(
-                    "Sent to {} at {}: {}",
-                    record.to, record.sent_at, record.body
+                    "Sent to {} at {} (id {}, status {:?}): {}",
+                    record.to, record.sent_at, record.id, record.status, record.body
                 );
                 persist_state(&client, &cli.state_file)?;
             }
@@ -118,12 +144,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(err) => return Err(err.into()),
         },
+        Commands::GenerateQr => match client.generate_qr_login() {
+            Ok(login) => {
+                println!("QR token {} (expires {})", login.token, login.expires_at);
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(err) => return Err(err.into()),
+        },
+        Commands::VerifyQr { token } => match client.verify_qr_login(&token) {
+            Ok(login) => {
+                println!("Verified QR token {} at {}", login.token, login.issued_at);
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::QrLoginMissing) => {
+                eprintln!("Generate a QR token first using generate-qr.");
+            }
+            Err(ClientError::QrLoginMismatch) => {
+                eprintln!("Provided token does not match the active QR login.");
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(err) => return Err(err.into()),
+        },
         Commands::ReceiveMessage { from, message } => {
             match client.simulate_incoming_message(&from, &message) {
                 Ok(record) => {
                     println!(
-                        "Received from {} at {}: {}",
-                        record.from, record.received_at, record.body
+                        "Received from {} at {} (id {}): {}",
+                        record.from, record.received_at, record.id, record.body
                     );
                     persist_state(&client, &cli.state_file)?;
                 }
@@ -136,6 +188,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Err(err) => return Err(err.into()),
             }
         }
+        Commands::MarkDelivered { id } => match parse_uuid(&id) {
+            Ok(uuid) => match client.mark_message_status(uuid, MessageStatus::Delivered) {
+                Ok(record) => {
+                    println!(
+                        "Marked message {} as {:?} for {}",
+                        record.id, record.status, record.to
+                    );
+                    persist_state(&client, &cli.state_file)?;
+                }
+                Err(ClientError::NotRegistered) => {
+                    eprintln!("Device not registered. Run the register command first.");
+                }
+                Err(ClientError::NotConnected) => {
+                    eprintln!("Device not connected. Run the connect command first.");
+                }
+                Err(ClientError::MessageNotFound(_)) => {
+                    eprintln!("No outgoing message found for id {id}.");
+                }
+                Err(err) => return Err(err.into()),
+            },
+            Err(err) => eprintln!("Invalid message id: {err}"),
+        },
+        Commands::MarkRead { id } => match parse_uuid(&id) {
+            Ok(uuid) => match client.mark_message_status(uuid, MessageStatus::Read) {
+                Ok(record) => {
+                    println!(
+                        "Marked message {} as {:?} for {}",
+                        record.id, record.status, record.to
+                    );
+                    persist_state(&client, &cli.state_file)?;
+                }
+                Err(ClientError::NotRegistered) => {
+                    eprintln!("Device not registered. Run the register command first.");
+                }
+                Err(ClientError::NotConnected) => {
+                    eprintln!("Device not connected. Run the connect command first.");
+                }
+                Err(ClientError::MessageNotFound(_)) => {
+                    eprintln!("No outgoing message found for id {id}.");
+                }
+                Err(err) => return Err(err.into()),
+            },
+            Err(err) => eprintln!("Invalid message id: {err}"),
+        },
         Commands::ListContacts => {
             if client.state.contacts.is_empty() {
                 println!("No contacts stored.");
@@ -152,10 +248,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("No messages have been recorded.");
             } else {
                 for msg in &client.state.outgoing_messages {
-                    println!("[sent {}] to {}: {}", msg.sent_at, msg.to, msg.body);
+                    println!(
+                        "[sent {}] to {} (id {}, status {:?}): {}",
+                        msg.sent_at, msg.to, msg.id, msg.status, msg.body
+                    );
                 }
                 for msg in &client.state.incoming_messages {
-                    println!("[recv {}] from {}: {}", msg.received_at, msg.from, msg.body);
+                    println!(
+                        "[recv {}] from {} (id {}): {}",
+                        msg.received_at, msg.from, msg.id, msg.body
+                    );
                 }
             }
         }
@@ -168,6 +270,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
+        Commands::DecryptMessage { id } => match parse_uuid(&id) {
+            Ok(uuid) => match client.decrypt_message_body(uuid) {
+                Ok(plaintext) => println!("Plaintext: {plaintext}"),
+                Err(ClientError::MessageNotFound(_)) => {
+                    eprintln!("No outgoing message found for id {id}.");
+                }
+                Err(err) => return Err(err.into()),
+            },
+            Err(err) => eprintln!("Invalid message id: {err}"),
+        },
         Commands::ShowConfig => {
             println!("Config: {:?}", client.config);
             println!("Session: {:?}", client.state);
@@ -186,4 +298,8 @@ fn load_state(path: &PathBuf) -> SessionState {
 
 fn persist_state(client: &WhatsmeowClient, path: &PathBuf) -> Result<(), ClientError> {
     client.store_state(path)
+}
+
+fn parse_uuid(id: &str) -> Result<Uuid, uuid::Error> {
+    Uuid::parse_str(id)
 }

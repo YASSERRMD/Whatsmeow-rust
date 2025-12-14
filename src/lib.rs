@@ -11,4 +11,4 @@ pub mod state;
 
 pub use client::{ClientError, WhatsmeowClient};
 pub use config::WhatsmeowConfig;
-pub use state::SessionState;
+pub use state::{MessageStatus, NetworkState, QrLogin, SessionState};
