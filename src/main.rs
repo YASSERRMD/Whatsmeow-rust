@@ -27,12 +27,18 @@ enum Commands {
     Register { jid: String },
     /// Attempt a connection using the configured session.
     Connect,
+    /// Perform a simulated network handshake with the upstream endpoint.
+    BootstrapNetwork { endpoint: Option<String> },
     /// Disconnect from the simulated session while keeping local state.
     Disconnect,
     /// Send a message to a known contact while connected.
     SendMessage { to: String, message: String },
     /// Generate a mock pairing code for linking a device.
     RequestPairingCode,
+    /// Generate a QR login token to mirror native pairing.
+    GenerateQr,
+    /// Verify a previously generated QR token.
+    VerifyQr { token: String },
     /// Simulate receipt of a message while connected.
     ReceiveMessage { from: String, message: String },
     /// Mark an outgoing message as delivered.
@@ -45,6 +51,8 @@ enum Commands {
     ListMessages,
     /// List the recorded lifecycle events.
     ListEvents,
+    /// Decrypt an outgoing message by id.
+    DecryptMessage { id: String },
     /// Print the current configuration.
     ShowConfig,
 }
@@ -75,6 +83,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Connect => match client.connect() {
             Ok(summary) => {
                 println!("{summary}");
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(err) => return Err(err.into()),
+        },
+        Commands::BootstrapNetwork { endpoint } => match client.bootstrap_network(endpoint) {
+            Ok(network) => {
+                println!(
+                    "Handshaked with {} (latency {:?} ms)",
+                    network.endpoint, network.latency_ms
+                );
                 persist_state(&client, &cli.state_file)?;
             }
             Err(ClientError::NotRegistered) => {
@@ -120,6 +141,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 eprintln!(
                     "Pairing code already issued. Clear state or reuse it before requesting a new one."
                 );
+            }
+            Err(err) => return Err(err.into()),
+        },
+        Commands::GenerateQr => match client.generate_qr_login() {
+            Ok(login) => {
+                println!("QR token {} (expires {})", login.token, login.expires_at);
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(err) => return Err(err.into()),
+        },
+        Commands::VerifyQr { token } => match client.verify_qr_login(&token) {
+            Ok(login) => {
+                println!("Verified QR token {} at {}", login.token, login.issued_at);
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::QrLoginMissing) => {
+                eprintln!("Generate a QR token first using generate-qr.");
+            }
+            Err(ClientError::QrLoginMismatch) => {
+                eprintln!("Provided token does not match the active QR login.");
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
             }
             Err(err) => return Err(err.into()),
         },
@@ -223,6 +270,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
+        Commands::DecryptMessage { id } => match parse_uuid(&id) {
+            Ok(uuid) => match client.decrypt_message_body(uuid) {
+                Ok(plaintext) => println!("Plaintext: {plaintext}"),
+                Err(ClientError::MessageNotFound(_)) => {
+                    eprintln!("No outgoing message found for id {id}.");
+                }
+                Err(err) => return Err(err.into()),
+            },
+            Err(err) => eprintln!("Invalid message id: {err}"),
+        },
         Commands::ShowConfig => {
             println!("Config: {:?}", client.config);
             println!("Session: {:?}", client.state);
