@@ -4,10 +4,11 @@ use chrono::{Duration, Utc};
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use uuid::Uuid;
 
 use crate::{
     config::WhatsmeowConfig,
-    state::{IncomingMessage, OutgoingMessage, SessionState},
+    state::{IncomingMessage, MessageStatus, OutgoingMessage, SessionState},
 };
 
 /// High-level facade that mimics a Whatsmeow client lifecycle.
@@ -25,6 +26,8 @@ pub enum ClientError {
     NotConnected,
     #[error("pairing code already exists; reuse or clear it before requesting a new one")]
     PairingCodeExists,
+    #[error("no outgoing message found for id {0}")]
+    MessageNotFound(Uuid),
     #[error("failed to serialize session: {0}")]
     Serialization(#[from] serde_json::Error),
     #[error("failed to persist session: {0}")]
@@ -127,6 +130,29 @@ impl WhatsmeowClient {
         let from = from.into();
         self.state.upsert_contact(&from, &from);
         Ok(self.state.record_incoming_message(from, body))
+    }
+
+    /// Update delivery status for an outgoing message to mimic delivery receipts.
+    pub fn mark_message_status(
+        &mut self,
+        id: Uuid,
+        status: MessageStatus,
+    ) -> Result<OutgoingMessage, ClientError> {
+        if !self.state.is_registered() {
+            return Err(ClientError::NotRegistered);
+        }
+
+        if !self.state.is_connected() {
+            return Err(ClientError::NotConnected);
+        }
+
+        let updated = self
+            .state
+            .mark_outgoing_status(id, status)
+            .cloned()
+            .ok_or(ClientError::MessageNotFound(id))?;
+
+        Ok(updated)
     }
 
     /// Persist session state to disk in JSON format.

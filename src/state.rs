@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// Minimal session state used to simulate device registration and key storage.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -94,9 +95,11 @@ impl SessionState {
         body: impl Into<String>,
     ) -> OutgoingMessage {
         let message = OutgoingMessage {
+            id: Uuid::new_v4(),
             to: to.into(),
             body: body.into(),
             sent_at: Utc::now(),
+            status: MessageStatus::Queued,
         };
         self.outgoing_messages.push(message.clone());
         self.events
@@ -111,6 +114,7 @@ impl SessionState {
         body: impl Into<String>,
     ) -> IncomingMessage {
         let message = IncomingMessage {
+            id: Uuid::new_v4(),
             from: from.into(),
             body: body.into(),
             received_at: Utc::now(),
@@ -134,6 +138,22 @@ impl SessionState {
             .push(SessionEvent::new(EventKind::PairingCodeIssued));
     }
 
+    /// Update the status of an outgoing message and return the updated record.
+    pub fn mark_outgoing_status(
+        &mut self,
+        id: Uuid,
+        status: MessageStatus,
+    ) -> Option<&OutgoingMessage> {
+        let maybe_message = self.outgoing_messages.iter_mut().find(|msg| msg.id == id)?;
+        maybe_message.status = status.clone();
+        self.events
+            .push(SessionEvent::new(EventKind::MessageStatusChanged {
+                id,
+                status,
+            }));
+        Some(maybe_message)
+    }
+
     /// Add an event to the session timeline.
     pub fn push_event(&mut self, kind: EventKind) {
         self.events.push(SessionEvent::new(kind));
@@ -150,19 +170,32 @@ pub struct Contact {
 /// Outgoing message record that includes a timestamp for auditing.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OutgoingMessage {
+    #[serde(with = "uuid::serde::compact")]
+    pub id: Uuid,
     pub to: String,
     pub body: String,
     #[serde(with = "chrono::serde::ts_seconds")]
     pub sent_at: DateTime<Utc>,
+    pub status: MessageStatus,
 }
 
 /// Incoming message record to mirror real-world delivery.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IncomingMessage {
+    #[serde(with = "uuid::serde::compact")]
+    pub id: Uuid,
     pub from: String,
     pub body: String,
     #[serde(with = "chrono::serde::ts_seconds")]
     pub received_at: DateTime<Utc>,
+}
+
+/// Simplified message states to mimic delivery receipts.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum MessageStatus {
+    Queued,
+    Delivered,
+    Read,
 }
 
 /// Representation of a pairing code used for device linking.
@@ -201,4 +234,5 @@ pub enum EventKind {
     PairingCodeIssued,
     MessageSent(OutgoingMessage),
     MessageReceived(IncomingMessage),
+    MessageStatusChanged { id: Uuid, status: MessageStatus },
 }

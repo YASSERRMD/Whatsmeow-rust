@@ -9,7 +9,8 @@ with configuration, session management, and a basic CLI workflow.
 - Serializable `WhatsmeowConfig` and `SessionState` structures.
 - A `WhatsmeowClient` façade with registration, connection/disconnection
   simulation, message logging, inbound message recording, pairing code
-  issuance, event tracking, and session persistence to JSON.
+  issuance, delivery/read receipt simulation, event tracking, and session
+  persistence to JSON.
 - Command-line interface built with `clap` for registering a device, printing
   configuration, connecting/disconnecting, generating pairing codes, sending
   mock messages, recording received messages, and inspecting stored contacts or
@@ -24,6 +25,8 @@ cargo run -- connect
 cargo run -- send-message --to 12345@s.whatsapp.net --message "Hello from Rust"
 cargo run -- request-pairing-code
 cargo run -- receive-message --from 12345@s.whatsapp.net --message "Hi back!"
+cargo run -- mark-delivered --id <message-id>
+cargo run -- mark-read --id <message-id>
 cargo run -- list-contacts
 cargo run -- list-messages
 cargo run -- list-events
@@ -39,8 +42,10 @@ identifier.
 
 - `registered_jid` and `encryption_keys`: capture registration output.
 - `contacts`: populated as messages are sent to JIDs.
-- `outgoing_messages`: log of sent messages, timestamped for traceability.
-- `incoming_messages`: log of received messages recorded via the CLI.
+- `outgoing_messages`: log of sent messages, each with a UUID and delivery
+  status.
+- `incoming_messages`: log of received messages recorded via the CLI, with
+  unique IDs for debugging.
 - `connected` and `last_connected`: simple connection status markers.
 - `pairing_code`: placeholder for QR/pairing-based login flows.
 - `events`: ordered log of lifecycle events.
