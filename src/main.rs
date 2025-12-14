@@ -93,8 +93,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::BootstrapNetwork { endpoint } => match client.bootstrap_network(endpoint) {
             Ok(network) => {
                 println!(
-                    "Handshaked with {} (latency {:?} ms)",
-                    network.endpoint, network.latency_ms
+                    "Handshaked with {} (latency {:?} ms, status {:?}, error {:?})",
+                    network.endpoint, network.latency_ms, network.status_code, network.error
                 );
                 persist_state(&client, &cli.state_file)?;
             }

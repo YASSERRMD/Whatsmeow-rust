@@ -1,9 +1,11 @@
 use std::{fs, path::Path};
 
+use aes_gcm::{Aes256Gcm, Nonce, aead::Aead, aead::KeyInit};
 use base64::{Engine as _, engine::general_purpose};
 use chrono::{Duration, Utc};
-use rand::{Rng, distributions::Alphanumeric};
+use rand::{Rng, RngCore, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -104,9 +106,22 @@ impl WhatsmeowClient {
         }
 
         let endpoint_to_use = endpoint.unwrap_or_else(|| self.config.network_endpoint.clone());
-        let latency_ms = rand::thread_rng().gen_range(20..200);
-        self.state
-            .mark_network_handshake(endpoint_to_use.clone(), latency_ms);
+        let start = std::time::Instant::now();
+        let response = ureq::get(&endpoint_to_use).call();
+        let elapsed_ms = start.elapsed().as_millis();
+
+        let (status_code, error) = match response {
+            Ok(resp) => (Some(resp.status()), None),
+            Err(ureq::Error::Status(code, _)) => (Some(code), Some("unexpected status".into())),
+            Err(err) => (None, Some(err.to_string())),
+        };
+
+        self.state.mark_network_handshake(
+            endpoint_to_use.clone(),
+            Some(elapsed_ms),
+            status_code,
+            error,
+        );
         Ok(self.state.network.clone())
     }
 
@@ -251,33 +266,50 @@ impl WhatsmeowClient {
     }
 
     fn encrypt_body(&self, body: &str) -> Result<String, ClientError> {
-        let secret = self.config.encryption_secret.as_bytes();
-        if secret.is_empty() {
-            return Err(ClientError::EncryptionFailure("empty secret".into()));
-        }
-        let xored: Vec<u8> = body
-            .as_bytes()
-            .iter()
-            .zip(secret.iter().cycle())
-            .map(|(b, k)| b ^ k)
-            .collect();
-        Ok(general_purpose::STANDARD.encode(xored))
+        let cipher = self.cipher()?;
+        let mut nonce_bytes = [0u8; 12];
+        rand::thread_rng().fill_bytes(&mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+        let ciphertext = cipher
+            .encrypt(nonce, body.as_bytes())
+            .map_err(|err| ClientError::EncryptionFailure(err.to_string()))?;
+
+        let mut payload = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
+        payload.extend_from_slice(&nonce_bytes);
+        payload.extend_from_slice(&ciphertext);
+        Ok(general_purpose::STANDARD.encode(payload))
     }
 
     fn decrypt_body(&self, ciphertext: &str) -> Result<String, ClientError> {
-        let secret = self.config.encryption_secret.as_bytes();
-        if secret.is_empty() {
-            return Err(ClientError::EncryptionFailure("empty secret".into()));
-        }
+        let cipher = self.cipher()?;
         let decoded = general_purpose::STANDARD
             .decode(ciphertext)
             .map_err(|err| ClientError::EncryptionFailure(err.to_string()))?;
-        let plain_bytes: Vec<u8> = decoded
-            .iter()
-            .zip(secret.iter().cycle())
-            .map(|(b, k)| b ^ k)
-            .collect();
-        String::from_utf8(plain_bytes)
-            .map_err(|err| ClientError::EncryptionFailure(err.to_string()))
+
+        if decoded.len() < 12 {
+            return Err(ClientError::EncryptionFailure(
+                "ciphertext missing nonce".into(),
+            ));
+        }
+
+        let (nonce_bytes, body) = decoded.split_at(12);
+        let nonce = Nonce::from_slice(nonce_bytes);
+        let plaintext = cipher
+            .decrypt(nonce, body)
+            .map_err(|err| ClientError::EncryptionFailure(err.to_string()))?;
+
+        String::from_utf8(plaintext).map_err(|err| ClientError::EncryptionFailure(err.to_string()))
+    }
+
+    fn cipher(&self) -> Result<Aes256Gcm, ClientError> {
+        if self.config.encryption_secret.is_empty() {
+            return Err(ClientError::EncryptionFailure("empty secret".into()));
+        }
+
+        let mut hasher = Sha256::new();
+        hasher.update(self.config.encryption_secret.as_bytes());
+        let digest = hasher.finalize();
+        let key = aes_gcm::Key::<Aes256Gcm>::from_slice(&digest);
+        Ok(Aes256Gcm::new(key))
     }
 }
