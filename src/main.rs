@@ -26,6 +26,20 @@ enum Commands {
     Register { jid: String },
     /// Attempt a connection using the configured session.
     Connect,
+    /// Disconnect from the simulated session while keeping local state.
+    Disconnect,
+    /// Send a message to a known contact while connected.
+    SendMessage { to: String, message: String },
+    /// Generate a mock pairing code for linking a device.
+    RequestPairingCode,
+    /// Simulate receipt of a message while connected.
+    ReceiveMessage { from: String, message: String },
+    /// List known contacts.
+    ListContacts,
+    /// List stored message history.
+    ListMessages,
+    /// List the recorded lifecycle events.
+    ListEvents,
     /// Print the current configuration.
     ShowConfig,
 }
@@ -63,6 +77,97 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(err) => return Err(err.into()),
         },
+        Commands::Disconnect => match client.disconnect() {
+            Ok(_) => {
+                println!("Disconnected.");
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(err) => return Err(err.into()),
+        },
+        Commands::SendMessage { to, message } => match client.send_message(&to, &message) {
+            Ok(record) => {
+                println!(
+                    "Sent to {} at {}: {}",
+                    record.to, record.sent_at, record.body
+                );
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(ClientError::NotConnected) => {
+                eprintln!("Device not connected. Run the connect command first.");
+            }
+            Err(err) => return Err(err.into()),
+        },
+        Commands::RequestPairingCode => match client.request_pairing_code() {
+            Ok(code) => {
+                println!("Pairing code (valid 5m): {code}");
+                persist_state(&client, &cli.state_file)?;
+            }
+            Err(ClientError::NotRegistered) => {
+                eprintln!("Device not registered. Run the register command first.");
+            }
+            Err(ClientError::PairingCodeExists) => {
+                eprintln!(
+                    "Pairing code already issued. Clear state or reuse it before requesting a new one."
+                );
+            }
+            Err(err) => return Err(err.into()),
+        },
+        Commands::ReceiveMessage { from, message } => {
+            match client.simulate_incoming_message(&from, &message) {
+                Ok(record) => {
+                    println!(
+                        "Received from {} at {}: {}",
+                        record.from, record.received_at, record.body
+                    );
+                    persist_state(&client, &cli.state_file)?;
+                }
+                Err(ClientError::NotRegistered) => {
+                    eprintln!("Device not registered. Run the register command first.");
+                }
+                Err(ClientError::NotConnected) => {
+                    eprintln!("Device not connected. Run the connect command first.");
+                }
+                Err(err) => return Err(err.into()),
+            }
+        }
+        Commands::ListContacts => {
+            if client.state.contacts.is_empty() {
+                println!("No contacts stored.");
+            } else {
+                for contact in &client.state.contacts {
+                    println!("{} ({})", contact.display_name, contact.jid);
+                }
+            }
+        }
+        Commands::ListMessages => {
+            if client.state.outgoing_messages.is_empty()
+                && client.state.incoming_messages.is_empty()
+            {
+                println!("No messages have been recorded.");
+            } else {
+                for msg in &client.state.outgoing_messages {
+                    println!("[sent {}] to {}: {}", msg.sent_at, msg.to, msg.body);
+                }
+                for msg in &client.state.incoming_messages {
+                    println!("[recv {}] from {}: {}", msg.received_at, msg.from, msg.body);
+                }
+            }
+        }
+        Commands::ListEvents => {
+            if client.state.events.is_empty() {
+                println!("No events recorded.");
+            } else {
+                for event in &client.state.events {
+                    println!("[{0}] {1:?}", event.at, event.kind);
+                }
+            }
+        }
         Commands::ShowConfig => {
             println!("Config: {:?}", client.config);
             println!("Session: {:?}", client.state);
