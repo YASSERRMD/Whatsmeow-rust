@@ -1,4 +1,4 @@
-use std::{fs, path::Path};
+use std::{fs, io::Read, path::Path};
 
 use aes_gcm::{Aes256Gcm, Nonce, aead::Aead, aead::KeyInit};
 use base64::{Engine as _, engine::general_purpose};
@@ -42,6 +42,8 @@ pub enum ClientError {
     QrLoginExpired,
     #[error("encryption failed: {0}")]
     EncryptionFailure(String),
+    #[error("media download failed: {0}")]
+    MediaDownloadFailed(String),
     #[error("failed to serialize session: {0}")]
     Serialization(#[from] serde_json::Error),
     #[error("failed to persist session: {0}")]
@@ -129,6 +131,42 @@ impl WhatsmeowClient {
             error,
         );
         Ok(self.state.network.clone())
+    }
+
+    /// Download media to the configured media directory and track it in session state.
+    pub fn download_media(
+        &mut self,
+        url: &str,
+        filename: Option<&str>,
+    ) -> Result<crate::state::MediaItem, ClientError> {
+        if !self.state.is_registered() {
+            return Err(ClientError::NotRegistered);
+        }
+
+        if !self.state.is_connected() {
+            return Err(ClientError::NotConnected);
+        }
+
+        let response = ureq::get(url)
+            .call()
+            .map_err(|err| ClientError::MediaDownloadFailed(err.to_string()))?;
+
+        let mut reader = response.into_reader();
+        let mut bytes = Vec::new();
+        reader
+            .read_to_end(&mut bytes)
+            .map_err(|err| ClientError::MediaDownloadFailed(err.to_string()))?;
+
+        fs::create_dir_all(&self.config.media_path)?;
+        let file_name = filename
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("media-{}.bin", Uuid::new_v4()));
+        let path = Path::new(&self.config.media_path).join(file_name);
+        fs::write(&path, &bytes)?;
+
+        Ok(self
+            .state
+            .record_media(url, path.to_string_lossy().to_string(), bytes.len() as u64))
     }
 
     /// Create a QR login token and return a printable representation.
@@ -335,7 +373,9 @@ mod tests {
     fn expired_pairing_code_allows_regeneration() {
         let mut client = WhatsmeowClient::new(WhatsmeowConfig::default(), SessionState::default());
         client.register_device("123@s.whatsapp.net");
-        client.state.set_pairing_code("EXPIRED", Utc::now() - Duration::minutes(1));
+        client
+            .state
+            .set_pairing_code("EXPIRED", Utc::now() - Duration::minutes(1));
 
         let code = client.request_pairing_code().expect("should re-issue code");
 

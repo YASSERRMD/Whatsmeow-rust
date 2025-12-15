@@ -1,78 +1,70 @@
 # whatsmeow-rust
 
-This repository provides a small, documented Rust scaffold inspired by the
-[Whatsmeow](https://github.com/tulir/whatsmeow) Go client. It is **not** a
-feature-complete port; instead, it offers a starting point for experimenting
-with configuration, session management, and a basic CLI workflow.
+A small, documented Rust scaffold inspired by the [Whatsmeow](https://github.com/tulir/whatsmeow) Go client. It mirrors the shape of a messaging client—configuration, session persistence, QR flows, encryption helpers, networking probes, and media downloads—while keeping the implementation deliberately lightweight for local experimentation. This project is **not** a production-ready WhatsApp client.
 
-## Features
-- Serializable `WhatsmeowConfig` and `SessionState` structures.
-- A `WhatsmeowClient` façade with registration, connection/disconnection
-  simulation, message logging, inbound message recording, pairing code
-  issuance, delivery/read receipt simulation, event tracking, session
-  persistence to JSON, an HTTP-backed networking handshake, QR login token
-  issuance/verification, and AES-GCM message encryption helpers derived from
-  your configured secret.
-- Command-line interface built with `clap` for registering a device, printing
-  configuration, connecting/disconnecting, generating pairing codes that expire
-  after five minutes, sending mock messages, recording received messages, and
-  inspecting stored contacts or history.
+## Getting started
 
-## Usage
+### Prerequisites
+- Rust 1.76+ (stable toolchain recommended)
+- Network access for `ureq` when invoking the networking or media commands
+- A writable working directory (default state is written under `./data/`)
+
+### Build and test
+```bash
+cargo test
+```
+
+### Run the CLI
+The CLI ships with a set of subcommands that exercise the client. By default, state is read from and written to `./data/session.json`. You can point to a different file with `--state-file` and override the advertised user agent with `--user-agent`.
 
 ```bash
 cargo run -- --help
 cargo run -- register --jid 12345@s.whatsapp.net
 cargo run -- connect
-cargo run -- send-message --to 12345@s.whatsapp.net --message "Hello from Rust"
-cargo run -- request-pairing-code
-cargo run -- generate-qr
-cargo run -- verify-qr --token <token>
 cargo run -- bootstrap-network --endpoint https://chat.whatsmeow.test
+cargo run -- send-message --to 12345@s.whatsapp.net --message "Hello from Rust"
 cargo run -- receive-message --from 12345@s.whatsapp.net --message "Hi back!"
 cargo run -- mark-delivered --id <message-id>
 cargo run -- mark-read --id <message-id>
 cargo run -- decrypt-message --id <message-id>
+cargo run -- request-pairing-code
+cargo run -- generate-qr
+cargo run -- verify-qr --token <token>
+cargo run -- download-media --url https://example.com/media.jpg
+cargo run -- download-media --url https://example.com/media.jpg --output hero.jpg
+cargo run -- list-media
 cargo run -- list-contacts
 cargo run -- list-messages
 cargo run -- list-events
-cargo run -- disconnect
 cargo run -- show-config
+cargo run -- disconnect
 ```
 
-The commands store state in `./data/session.json` by default. Use
-`--state-file` to change the location and `--user-agent` to override the client
-identifier.
+## Capabilities
+The scaffold keeps the domain surface area of the upstream project while remaining intentionally simplified:
+- **Configuration**: `WhatsmeowConfig` captures database, media, user agent, network endpoint, and encryption secret settings with builder-style overrides.
+- **Registration and session persistence**: Device JID registration seeds encryption key placeholders and persists state to JSON alongside a device name and contact list.
+- **Connection lifecycle**: `connect` / `disconnect` toggle connection flags and emit ordered session events.
+- **Messaging simulation**: Outgoing and incoming messages are timestamped, tracked with UUIDs, and logged to the event timeline. Delivery/read receipts update stored status.
+- **QR and pairing flows**: Request expiring pairing codes, generate 10-minute QR login tokens, and verify them with mismatch/expiry handling.
+- **Networking probe**: `bootstrap-network` performs a real HTTP GET to the configured endpoint, storing latency, status code, and any error string for inspection.
+- **Encryption helpers**: Outbound messages are encrypted with AES-256-GCM using a key derived from the configured `encryption_secret`; ciphertext and nonce are stored to allow local decryption.
+- **Media downloads**: Media files are fetched over HTTP when connected and registered, saved under the configured media directory, and tracked in session state with byte counts and event entries.
+- **Events**: Every significant transition (registration, network handshake, QR generation/verification, message sends/receives, media downloads) is appended to a chronological event log.
 
-### Session contents
+## Session layout
+The session JSON (default `./data/session.json`) mirrors the structures in `src/state.rs`:
+- `registered_jid`, `encryption_keys`, and `device_name`
+- `contacts`: Known JIDs with display names, updated when messages are sent
+- `outgoing_messages` / `incoming_messages`: Message bodies, timestamps, statuses, UUIDs, and (for outgoing) optional ciphertext
+- `connected` and `last_connected`: Simple connection markers
+- `network`: Last handshake endpoint, latency, status code, error text, and timestamp
+- `pairing_code` and `qr_login`: Expiring codes for pairing and QR-based login flows
+- `media`: Downloaded file metadata (source URL, local path, byte size, timestamp)
+- `events`: Ordered lifecycle history referencing the items above
 
-- `registered_jid` and `encryption_keys`: capture registration output.
-- `contacts`: populated as messages are sent to JIDs.
-- `outgoing_messages`: log of sent messages, each with a UUID and delivery
-  status.
-- `incoming_messages`: log of received messages recorded via the CLI, with
-  unique IDs for debugging.
-- `connected` and `last_connected`: simple connection status markers.
-- `pairing_code`: placeholder for QR/pairing-based login flows.
-- `events`: ordered log of lifecycle events including networking, QR, and
-  encryption milestones.
+## Configuration notes
+`WhatsmeowConfig::default()` writes artifacts under `./data/` (`whatsmeow.db` and `media/`) and advertises the `whatsmeow-rust/0.1` user agent. Override fields with the provided `with_*` helpers when embedding the crate, or use `--user-agent` in the CLI for quick testing.
 
-### Networking, QR, and encryption
-
-- Call `bootstrap-network` after registration to store endpoint, measured
-  latency, status code, and any error message in the session based on a real
-  HTTP request to the configured endpoint.
-- Call `generate-qr` followed by `verify-qr --token <token>` to simulate QR
-  login token issuance and verification. Expired QR tokens are rejected and
-  cleared so you can immediately generate a fresh code.
-- Messages are encrypted with AES-256-GCM using a key derived from your
-  `encryption_secret` (SHA-256). The stored ciphertext includes the nonce and
-  authentication tag; use `decrypt-message --id <message-id>` to view the
-  decrypted body locally.
-
-## Notes
-- Networking, QR login, encryption, and persistence are implemented as local
-  simulations; they mirror the upstream concerns but are not production-grade
-  protocol implementations.
-- This scaffold focuses on clear types and extension points so you can iterate
-  toward a fuller implementation.
+## Limitations
+This repository is a teaching scaffold. Networking, QR, encryption, and media handling are best-effort demonstrations for local use—they do not implement the WhatsApp protocol and should not be treated as secure or production-ready.

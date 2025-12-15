@@ -55,6 +55,10 @@ enum Commands {
     DecryptMessage { id: String },
     /// Print the current configuration.
     ShowConfig,
+    /// Download media to the configured media directory.
+    DownloadMedia { url: String, output: Option<String> },
+    /// List recorded media downloads.
+    ListMedia,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -286,6 +290,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::ShowConfig => {
             println!("Config: {:?}", client.config);
             println!("Session: {:?}", client.state);
+        }
+        Commands::DownloadMedia { url, output } => {
+            match client.download_media(&url, output.as_deref()) {
+                Ok(item) => {
+                    println!(
+                        "Downloaded {} bytes from {} to {} (id {})",
+                        item.bytes, item.source, item.file_path, item.id
+                    );
+                    persist_state(&client, &cli.state_file)?;
+                }
+                Err(ClientError::NotRegistered) => {
+                    eprintln!("Device not registered. Run the register command first.");
+                }
+                Err(ClientError::NotConnected) => {
+                    eprintln!("Device not connected. Run the connect command first.");
+                }
+                Err(err) => return Err(err.into()),
+            }
+        }
+        Commands::ListMedia => {
+            if client.state.media.is_empty() {
+                println!("No media downloaded yet.");
+            } else {
+                for item in &client.state.media {
+                    println!(
+                        "[{0}] {1} bytes from {2} -> {3}",
+                        item.downloaded_at, item.bytes, item.source, item.file_path
+                    );
+                }
+            }
         }
     }
 
