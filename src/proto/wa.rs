@@ -52,13 +52,13 @@ pub struct ClientPayload {
     pub web_info: Option<WebInfo>,
     #[prost(string, optional, tag = "7")]
     pub push_name: Option<String>,
-    #[prost(sfixed32, optional, tag = "8")]
+    #[prost(int32, optional, tag = "9")]
     pub session_id: Option<i32>,
-    #[prost(bool, optional, tag = "9")]
+    #[prost(bool, optional, tag = "10")]
     pub short_connect: Option<bool>,
-    #[prost(int32, optional, tag = "10")]
+    #[prost(int32, optional, tag = "12")]
     pub connect_type: Option<i32>,
-    #[prost(int32, optional, tag = "11")]
+    #[prost(int32, optional, tag = "13")]
     pub connect_reason: Option<i32>,
     #[prost(int32, repeated, tag = "14")]
     pub shards: Vec<i32>,
@@ -70,6 +70,14 @@ pub struct ClientPayload {
     pub device: Option<u32>,
     #[prost(message, optional, tag = "19")]
     pub device_pairing_data: Option<DevicePairingData>,
+    #[prost(int32, optional, tag = "20")]
+    pub product: Option<i32>,
+    #[prost(bytes, optional, tag = "21")]
+    pub fb_cat: Option<Vec<u8>>,
+    #[prost(bytes, optional, tag = "22")]
+    pub fb_user_agent: Option<Vec<u8>>,
+    #[prost(bool, optional, tag = "23")]
+    pub oc: Option<bool>,
 }
 
 #[derive(Clone, PartialEq, Message)]
@@ -78,28 +86,24 @@ pub struct UserAgent {
     pub platform: Option<i32>,
     #[prost(message, optional, tag = "2")]
     pub app_version: Option<AppVersion>,
-    #[prost(string, optional, tag = "3")]
-    pub mcc: Option<String>,
+    #[prost(int32, optional, tag = "3")]
+    pub release_channel: Option<i32>,
     #[prost(string, optional, tag = "4")]
-    pub mnc: Option<String>,
+    pub mcc_mnc: Option<String>,
     #[prost(string, optional, tag = "5")]
     pub os_version: Option<String>,
     #[prost(string, optional, tag = "6")]
-    pub manufacturer: Option<String>,
-    #[prost(string, optional, tag = "7")]
     pub device: Option<String>,
+    #[prost(string, optional, tag = "7")]
+    pub lc: Option<String>,
     #[prost(string, optional, tag = "8")]
+    pub locale: Option<String>,
+    #[prost(string, optional, tag = "15")]
+    pub manufacturer: Option<String>,
+    #[prost(string, optional, tag = "16")]
     pub os_build_number: Option<String>,
-    #[prost(string, optional, tag = "9")]
+    #[prost(string, optional, tag = "31")]
     pub phone_id: Option<String>,
-    #[prost(int32, optional, tag = "10")]
-    pub release_channel: Option<i32>,
-    #[prost(string, optional, tag = "11")]
-    pub locale_language_iso_639_1: Option<String>,
-    #[prost(string, optional, tag = "12")]
-    pub locale_country_iso_3166_1_alpha_2: Option<String>,
-    #[prost(string, optional, tag = "13")]
-    pub device_board: Option<String>,
 }
 
 #[derive(Clone, PartialEq, Message)]
@@ -209,21 +213,19 @@ pub fn make_web_client_payload(push_name: Option<&str>) -> ClientPayload {
             app_version: Some(AppVersion {
                 primary: Some(2),
                 secondary: Some(3000),
-                tertiary: Some(1012170356), // Common build number in traces
+                tertiary: Some(1012170356),
                 quaternary: Some(0),
                 quinary: Some(0),
             }),
-            mcc: Some("000".to_string()),
-            mnc: Some("000".to_string()),
-            os_version: Some("10.15.7".to_string()), // macOS Catalina
-            manufacturer: Some("Google Chrome".to_string()),
-            device: Some("macOS".to_string()),
-            os_build_number: Some("121.0.6167.184".to_string()), // Chrome build
-            phone_id: None,
             release_channel: Some(release_channel::RELEASE),
-            locale_language_iso_639_1: Some("en".to_string()),
-            locale_country_iso_3166_1_alpha_2: Some("US".to_string()),
-            device_board: None,
+            mcc_mnc: Some("000000".to_string()),
+            os_version: Some("10.15.7".to_string()),
+            device: Some("macOS".to_string()),
+            lc: Some("US".to_string()),
+            locale: Some("en".to_string()),
+            manufacturer: Some("Google Chrome".to_string()),
+            os_build_number: Some("121.0.6167.184".to_string()),
+            phone_id: None,
         }),
         web_info: Some(WebInfo {
             ref_token: None,
@@ -245,6 +247,10 @@ pub fn make_web_client_payload(push_name: Option<&str>) -> ClientPayload {
         connect_attempt_count: Some(0),
         device: Some(0),
         device_pairing_data: None,
+        product: None,
+        fb_cat: None,
+        fb_user_agent: None,
+        oc: Some(false),
     }
 }
 
