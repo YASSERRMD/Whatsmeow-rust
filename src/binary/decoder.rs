@@ -107,8 +107,18 @@ impl<'a> Decoder<'a> {
                 String::from_utf8(bytes)
                     .map_err(|e| DecodeError(format!("invalid utf8: {}", e)))
             }
+            // Dictionary tokens (double-byte)
+            0xEC..=0xEF => {
+                let dict = tag - 0xEC;  // 0-3
+                let index = self.read_byte()?;
+                if let Some(token) = super::token::get_double_token(dict, index) {
+                    Ok(token.to_string())
+                } else {
+                    Err(DecodeError(format!("unknown double token: dict={}, index={}", dict, index)))
+                }
+            }
             _ => {
-                // Token
+                // Single-byte token
                 if let Some(token) = get_token(tag) {
                     Ok(token.to_string())
                 } else {
