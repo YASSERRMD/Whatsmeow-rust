@@ -38,6 +38,8 @@ pub enum ClientError {
     QrLoginMissing,
     #[error("qr login token mismatch")]
     QrLoginMismatch,
+    #[error("qr login token expired")]
+    QrLoginExpired,
     #[error("encryption failed: {0}")]
     EncryptionFailure(String),
     #[error("failed to serialize session: {0}")]
@@ -82,8 +84,12 @@ impl WhatsmeowClient {
             return Err(ClientError::NotRegistered);
         }
 
-        if self.state.pairing_code.is_some() {
-            return Err(ClientError::PairingCodeExists);
+        if let Some(existing) = &self.state.pairing_code {
+            if existing.expires_at > Utc::now() {
+                return Err(ClientError::PairingCodeExists);
+            }
+
+            self.state.pairing_code = None;
         }
 
         let code: String = rand::thread_rng()
@@ -148,6 +154,13 @@ impl WhatsmeowClient {
             .qr_login
             .clone()
             .ok_or(ClientError::QrLoginMissing)?;
+
+        if login.expires_at < Utc::now() {
+            // Clear the expired token so callers can immediately generate a new one.
+            self.state.qr_login = None;
+            return Err(ClientError::QrLoginExpired);
+        }
+
         if login.token != token {
             return Err(ClientError::QrLoginMismatch);
         }
@@ -311,5 +324,36 @@ impl WhatsmeowClient {
         let digest = hasher.finalize();
         let key = aes_gcm::Key::<Aes256Gcm>::from_slice(&digest);
         Ok(Aes256Gcm::new(key))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expired_pairing_code_allows_regeneration() {
+        let mut client = WhatsmeowClient::new(WhatsmeowConfig::default(), SessionState::default());
+        client.register_device("123@s.whatsapp.net");
+        client.state.set_pairing_code("EXPIRED", Utc::now() - Duration::minutes(1));
+
+        let code = client.request_pairing_code().expect("should re-issue code");
+
+        assert_ne!(code, "EXPIRED");
+        assert!(client.state.pairing_code.as_ref().is_some());
+    }
+
+    #[test]
+    fn expired_qr_tokens_are_rejected() {
+        let mut client = WhatsmeowClient::new(WhatsmeowConfig::default(), SessionState::default());
+        client.register_device("123@s.whatsapp.net");
+        client
+            .state
+            .set_qr_login("expired", Utc::now() - Duration::minutes(5));
+
+        let result = client.verify_qr_login("expired");
+
+        assert!(matches!(result, Err(ClientError::QrLoginExpired)));
+        assert!(client.state.qr_login.is_none());
     }
 }
