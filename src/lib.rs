@@ -7,12 +7,16 @@
 //!
 //! - `types` - Core types like JID, MessageID, and events
 //! - `binary` - Binary XML encoding/decoding
-//! - `client` - High-level client API (coming in Phase 3)
+//! - `crypto` - Cryptographic primitives (Curve25519, AES-GCM, HKDF, Noise)
+//! - `socket` - WebSocket transport with Noise Protocol
+//! - `client` - High-level client API
 //! - `config` - Configuration management
 //! - `state` - Session state management
 
 pub mod types;
 pub mod binary;
+pub mod crypto;
+pub mod socket;
 
 // Re-export existing modules (from scaffold)
 mod client;
