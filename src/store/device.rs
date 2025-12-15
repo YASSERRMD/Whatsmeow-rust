@@ -61,6 +61,10 @@ impl Device {
             self.signed_pre_key = Some(PreKey::new_signed(1, identity));
         }
         
+        // Generate advertisement secret key (32 bytes)
+        let adv_secret: [u8; 32] = rand::random();
+        self.adv_secret_key = Some(adv_secret.to_vec());
+        
         self.registration_id = rand::random::<u32>() & 0x3FFF; // 14 bits
         self.initialized = true;
     }

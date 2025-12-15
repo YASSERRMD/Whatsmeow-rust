@@ -205,60 +205,86 @@ impl WhatsAppConnection {
 
     /// Receive and decrypt a frame
     pub async fn recv(&mut self) -> Result<Vec<u8>, HandshakeError> {
-        let msg = timeout(Duration::from_secs(30), self.ws.next()).await
-            .map_err(|_| HandshakeError::Timeout)?
-            .ok_or(HandshakeError::ConnectionFailed("connection closed".to_string()))?
-            .map_err(|e| HandshakeError::ConnectionFailed(e.to_string()))?;
+        loop {
+            let msg = timeout(Duration::from_secs(30), self.ws.next()).await
+                .map_err(|_| HandshakeError::Timeout)?
+                .ok_or(HandshakeError::ConnectionFailed("connection closed".to_string()))?
+                .map_err(|e| HandshakeError::ConnectionFailed(e.to_string()))?;
 
-        match msg {
-            Message::Binary(data) => {
-                if data.len() < 3 {
-                    return Err(HandshakeError::InvalidResponse("frame too short".to_string()));
-                }
-                
-                // Parse length header
-                let frame_len = ((data[0] as usize) << 16) 
-                              | ((data[1] as usize) << 8) 
-                              | (data[2] as usize);
-                
-                println!("   [recv] Frame: {} total, length header says {}, counter={}", 
-                         data.len(), frame_len, self.read_counter);
-                
-                // The encrypted data is after the 3-byte length prefix
-                let encrypted = &data[3..];
-                
-                if encrypted.is_empty() {
-                    return Err(HandshakeError::InvalidResponse("empty encrypted data".to_string()));
-                }
-                
-                let cipher = Aes256Gcm::new_from_slice(&self.read_key)
-                    .map_err(|_| HandshakeError::CryptoError("invalid key".to_string()))?;
-                
-                let mut iv = [0u8; 12];
-                iv[8..12].copy_from_slice(&self.read_counter.to_be_bytes());
-                let nonce = Nonce::from_slice(&iv);
-                
-                println!("   [recv] Encrypted {} bytes, IV={:02x?}", encrypted.len(), &iv[8..12]);
-                
-                match cipher.decrypt(nonce, encrypted) {
-                    Ok(decrypted) => {
-                        self.read_counter += 1;
-                        Ok(decrypted)
+            match msg {
+                Message::Binary(data) => {
+                    // Skip very short frames (likely keep-alive or error)
+                    if data.len() < 4 {
+                        println!("   [recv] Skipping short frame ({} bytes)", data.len());
+                        continue;
                     }
-                    Err(_) => {
-                        // Maybe the data is already decrypted binary XML?
-                        // The 0xf8 byte is a common binary token
-                        if data[0] == 0x00 && (data[1] == 0xf8 || data.len() < 20) {
-                            println!("   [recv] Treating as unencrypted binary data");
-                            Ok(data.to_vec())
-                        } else {
-                            Err(HandshakeError::CryptoError("decryption failed".to_string()))
+                    
+                    // Parse length header
+                    let frame_len = ((data[0] as usize) << 16) 
+                                  | ((data[1] as usize) << 8) 
+                                  | (data[2] as usize);
+                    
+                    // Sanity check - if frame_len is way off, the data might be malformed
+                    if frame_len > 100000 || frame_len + 3 > data.len() + 100 {
+                        println!("   [recv] Skipping malformed frame (len={}, data={})", frame_len, data.len());
+                        continue;
+                    }
+                    
+                    println!("   [recv] Frame: {} total, header says {}, counter={}", 
+                             data.len(), frame_len, self.read_counter);
+                    
+                    // The encrypted data is after the 3-byte length prefix
+                    let encrypted = &data[3..];
+                    
+                    if encrypted.is_empty() {
+                        println!("   [recv] Empty encrypted data, skipping");
+                        continue;
+                    }
+                    
+                    let cipher = Aes256Gcm::new_from_slice(&self.read_key)
+                        .map_err(|_| HandshakeError::CryptoError("invalid key".to_string()))?;
+                    
+                    let mut iv = [0u8; 12];
+                    iv[8..12].copy_from_slice(&self.read_counter.to_be_bytes());
+                    let nonce = Nonce::from_slice(&iv);
+                    
+                    match cipher.decrypt(nonce, encrypted) {
+                        Ok(decrypted) => {
+                            self.read_counter += 1;
+                            return Ok(decrypted);
+                        }
+                        Err(_) => {
+                            println!("   [recv] Decryption failed, trying next counter...");
+                            // Try incrementing counter in case we missed a message
+                            self.read_counter += 1;
+                            let mut iv2 = [0u8; 12];
+                            iv2[8..12].copy_from_slice(&self.read_counter.to_be_bytes());
+                            let nonce2 = Nonce::from_slice(&iv2);
+                            
+                            if let Ok(decrypted) = cipher.decrypt(nonce2, encrypted) {
+                                self.read_counter += 1;
+                                return Ok(decrypted);
+                            }
+                            
+                            // Give up on this frame
+                            println!("   [recv] Still failed, skipping frame");
+                            continue;
                         }
                     }
                 }
+                Message::Close(frame) => {
+                    let reason = frame.map(|f| format!("{}: {}", f.code, f.reason)).unwrap_or_default();
+                    return Err(HandshakeError::ConnectionFailed(format!("connection closed: {}", reason)));
+                }
+                Message::Ping(_) | Message::Pong(_) => {
+                    println!("   [recv] Ping/Pong");
+                    continue;
+                }
+                _ => {
+                    println!("   [recv] Unexpected message type, skipping");
+                    continue;
+                }
             }
-            Message::Close(_) => Err(HandshakeError::ConnectionFailed("connection closed".to_string())),
-            _ => Err(HandshakeError::InvalidResponse("unexpected message type".to_string())),
         }
     }
 }

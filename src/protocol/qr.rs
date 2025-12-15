@@ -60,6 +60,7 @@ impl QRPairing {
     }
 
     /// Generate QR codes for pairing.
+    /// Format: ref,noisePublicKey,identityPublicKey,advSecretKey
     fn generate_codes(device: &Device) -> Vec<String> {
         let noise_pub = device.noise_key.as_ref()
             .map(|k| base64::encode(&k.public))
@@ -69,10 +70,14 @@ impl QRPairing {
             .map(|k| base64::encode(&k.public))
             .unwrap_or_default();
 
-        // Generate multiple refs for timeout rotation
-        (0..8).map(|i| {
+        let adv_secret = device.adv_secret_key.as_ref()
+            .map(|k| base64::encode(k))
+            .unwrap_or_default();
+
+        // Generate multiple refs for timeout rotation (6 codes with 20s timeout each)
+        (0..6).map(|_| {
             let ref_id = format!("{:X}", rand::random::<u64>());
-            format!("2@{},{},{}", ref_id, noise_pub, identity_pub)
+            format!("{},{},{},{}", ref_id, noise_pub, identity_pub, adv_secret)
         }).collect()
     }
 
