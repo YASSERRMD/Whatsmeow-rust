@@ -63,16 +63,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Waiting for messages... (Press Ctrl+C to exit)");
             println!();
 
-            // Message loop
             loop {
                 match timeout(Duration::from_secs(30), conn.recv()).await {
                     Ok(Ok(data)) => {
-                        println!("📨 Received {} bytes", data.len());
+                        println!("📨 Received {} bytes: {:02x?}...", data.len(), &data[..data.len().min(20)]);
+                        
+                        // Skip first byte (flags) if it's 0x00
+                        let decode_data = if !data.is_empty() && data[0] == 0 {
+                            &data[1..]
+                        } else {
+                            &data[..]
+                        };
                         
                         // Try to decode as binary node
-                        match whatsmeow_rust::decode(&data) {
+                        match whatsmeow_rust::decode(decode_data) {
                             Ok(node) => {
-                                println!("   Tag: {}", node.tag);
+                                println!("   ✓ Tag: {}", node.tag);
+                                
+                                // Print attributes
+                                for (key, value) in &node.attrs {
+                                    println!("     {}: {:?}", key, value);
+                                }
                                 
                                 // Check if it's a message
                                 if node.tag == "message" {
@@ -97,7 +108,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                             echo_node.add_child(body_node);
                                             
                                             let encoded = whatsmeow_rust::encode(&echo_node);
-                                            if let Err(e) = conn.send(&encoded).await {
+                                            // Add flags byte
+                                            let mut frame = vec![0u8];
+                                            frame.extend_from_slice(&encoded);
+                                            
+                                            if let Err(e) = conn.send(&frame).await {
                                                 println!("   ⚠ Failed to send: {}", e);
                                             } else {
                                                 println!("   ✓ Echo sent!");
@@ -108,7 +123,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                             Err(e) => {
                                 println!("   Could not decode: {}", e);
-                                println!("   Raw: {:02x?}", &data[..data.len().min(50)]);
                             }
                         }
                     }
@@ -118,7 +132,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Err(_) => {
                         // Timeout - send keep-alive
-                        println!("⏰ Sending keep-alive...");
+                        println!("⏰ Timeout (no messages in 30s)");
                     }
                 }
             }

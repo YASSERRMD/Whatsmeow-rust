@@ -5,26 +5,29 @@
 use std::time::Duration;
 use tokio::time::timeout;
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::tungstenite::http::Request;
 use tokio::net::TcpStream;
 use futures::{SinkExt, StreamExt};
 use prost::Message as ProstMessage;
 use sha2::{Sha256, Digest};
+use aes_gcm::{Aes256Gcm, KeyInit, aead::Aead, Nonce};
 
-use crate::crypto::{KeyPair, Cipher, Hkdf};
+use crate::crypto::{KeyPair, Hkdf};
 use crate::store::Device;
 use crate::proto::{
-    HandshakeMessage, ClientHello, ServerHello, ClientFinish,
+    HandshakeMessage, ClientHello, ClientFinish,
     ClientPayload, make_web_client_payload, make_device_pairing_data,
 };
 
 /// WhatsApp WebSocket endpoints
 pub const WA_ENDPOINT: &str = "wss://web.whatsapp.com/ws/chat";
+pub const WA_ORIGIN: &str = "https://web.whatsapp.com";
 
-/// Noise protocol pattern name
-const NOISE_PATTERN: &[u8] = b"Noise_XX_25519_AESGCM_SHA256\0\0\0\0";
+/// Noise protocol pattern name (exactly 32 bytes)
+const NOISE_PATTERN: &[u8; 32] = b"Noise_XX_25519_AESGCM_SHA256\x00\x00\x00\x00";
 
-/// WhatsApp header
-const WA_HEADER: &[u8] = b"WA\x06\x00";
+/// WhatsApp connection header: 'W', 'A', MagicValue(6), DictVersion(3)
+const WA_HEADER: [u8; 4] = [b'W', b'A', 6, 3];
 
 /// Handshake errors
 #[derive(Debug)]
@@ -50,100 +53,143 @@ impl std::fmt::Display for HandshakeError {
 
 impl std::error::Error for HandshakeError {}
 
-/// Noise handshake state
-pub struct NoiseHandshakeState {
-    /// Current hash value
+/// Noise handshake state matching whatsmeow's implementation
+pub struct NoiseHandshake {
+    /// Hash state (h)
     hash: [u8; 32],
-    /// Chaining key
-    ck: [u8; 32],
-    /// Current cipher (after first key exchange)
-    cipher: Option<Cipher>,
+    /// Salt/chaining key
+    salt: [u8; 32],
+    /// Current cipher key
+    key: [u8; 32],
+    /// Counter for GCM nonces
+    counter: u32,
 }
 
-impl NoiseHandshakeState {
-    /// Initialize the handshake with the pattern name
+impl NoiseHandshake {
+    /// Start the handshake with pattern and header
     pub fn new(header: &[u8]) -> Self {
-        // Initialize h with SHA256(pattern_name)
-        let mut hasher = Sha256::new();
-        hasher.update(NOISE_PATTERN);
-        let hash: [u8; 32] = hasher.finalize().into();
+        // Pattern is exactly 32 bytes so use directly
+        let hash: [u8; 32] = *NOISE_PATTERN;
+        let salt = hash;
+        let key = hash;
         
-        // ck = h
-        let ck = hash;
+        let mut state = Self { hash, salt, key, counter: 0 };
         
-        // Mix in the header (prologue)
-        let mut state = Self { hash, ck, cipher: None };
-        state.mix_hash(header);
+        // Authenticate the header (prologue)
+        state.authenticate(header);
         
         state
     }
 
-    /// Mix data into the hash
-    fn mix_hash(&mut self, data: &[u8]) {
+    /// Mix data into the hash (authenticate)
+    fn authenticate(&mut self, data: &[u8]) {
         let mut hasher = Sha256::new();
         hasher.update(&self.hash);
         hasher.update(data);
         self.hash = hasher.finalize().into();
     }
 
-    /// Mix a shared secret into the chaining key
-    fn mix_shared_secret(&mut self, shared_secret: &[u8]) {
-        let derived = Hkdf::derive(Some(&self.ck), shared_secret, b"", 64);
-        self.ck.copy_from_slice(&derived[0..32]);
-        let mut cipher_key = [0u8; 32];
-        cipher_key.copy_from_slice(&derived[32..64]);
-        self.cipher = Some(Cipher::new(cipher_key));
+    /// Generate IV for AES-GCM from counter
+    fn generate_iv(&self) -> [u8; 12] {
+        let mut iv = [0u8; 12];
+        iv[8..12].copy_from_slice(&self.counter.to_be_bytes());
+        iv
     }
 
-    /// Encrypt data
-    fn encrypt(&mut self, plaintext: &[u8]) -> Vec<u8> {
-        if let Some(ref mut cipher) = self.cipher {
-            let ciphertext = cipher.encrypt(plaintext, &self.hash).unwrap();
-            self.mix_hash(&ciphertext);
-            ciphertext
-        } else {
-            self.mix_hash(plaintext);
-            plaintext.to_vec()
-        }
+    /// Encrypt using current key
+    fn encrypt(&mut self, plaintext: &[u8]) -> Result<Vec<u8>, HandshakeError> {
+        let cipher = Aes256Gcm::new_from_slice(&self.key)
+            .map_err(|_| HandshakeError::CryptoError("invalid key".to_string()))?;
+        let iv = self.generate_iv();
+        let nonce = Nonce::from_slice(&iv);
+        
+        // GCM with AAD = hash
+        let ciphertext = cipher.encrypt(nonce, aes_gcm::aead::Payload {
+            msg: plaintext,
+            aad: &self.hash,
+        }).map_err(|_| HandshakeError::CryptoError("encryption failed".to_string()))?;
+        
+        self.counter += 1;
+        self.authenticate(&ciphertext);
+        
+        Ok(ciphertext)
     }
 
-    /// Decrypt data
+    /// Decrypt using current key
     fn decrypt(&mut self, ciphertext: &[u8]) -> Result<Vec<u8>, HandshakeError> {
-        if let Some(ref mut cipher) = self.cipher {
-            let plaintext = cipher.decrypt(ciphertext, &self.hash)
-                .map_err(|_| HandshakeError::CryptoError("decryption failed".to_string()))?;
-            self.mix_hash(ciphertext);
-            Ok(plaintext)
-        } else {
-            self.mix_hash(ciphertext);
-            Ok(ciphertext.to_vec())
-        }
+        let cipher = Aes256Gcm::new_from_slice(&self.key)
+            .map_err(|_| HandshakeError::CryptoError("invalid key".to_string()))?;
+        let iv = self.generate_iv();
+        let nonce = Nonce::from_slice(&iv);
+        
+        let plaintext = cipher.decrypt(nonce, aes_gcm::aead::Payload {
+            msg: ciphertext,
+            aad: &self.hash,
+        }).map_err(|_| HandshakeError::CryptoError("decryption failed".to_string()))?;
+        
+        self.counter += 1;
+        self.authenticate(ciphertext);
+        
+        Ok(plaintext)
     }
 
-    /// Get final send/receive ciphers
-    fn finish(&self) -> (Cipher, Cipher) {
-        let derived = Hkdf::derive(Some(&self.ck), &[], b"", 64);
-        let mut send_key = [0u8; 32];
-        let mut recv_key = [0u8; 32];
-        send_key.copy_from_slice(&derived[0..32]);
-        recv_key.copy_from_slice(&derived[32..64]);
-        (Cipher::new(send_key), Cipher::new(recv_key))
+    /// Mix shared secret into key (after DH)
+    fn mix_into_key(&mut self, shared_secret: &[u8]) -> Result<(), HandshakeError> {
+        self.counter = 0;
+        
+        // HKDF extract and expand
+        let derived = Hkdf::derive(Some(&self.salt), shared_secret, b"", 64);
+        
+        self.salt.copy_from_slice(&derived[0..32]);
+        self.key.copy_from_slice(&derived[32..64]);
+        
+        Ok(())
+    }
+
+    /// Mix shared secret from DH
+    fn mix_shared_secret(&mut self, priv_key: &[u8; 32], pub_key: &[u8; 32]) -> Result<(), HandshakeError> {
+        // X25519 DH
+        let shared = x25519_dalek::x25519(*priv_key, *pub_key);
+        self.mix_into_key(&shared)
+    }
+
+    /// Extract final keys for transport
+    fn finish(&self) -> Result<([u8; 32], [u8; 32]), HandshakeError> {
+        let derived = Hkdf::derive(Some(&self.salt), &[], b"", 64);
+        
+        let mut write_key = [0u8; 32];
+        let mut read_key = [0u8; 32];
+        write_key.copy_from_slice(&derived[0..32]);
+        read_key.copy_from_slice(&derived[32..64]);
+        
+        Ok((write_key, read_key))
     }
 }
 
 /// WhatsApp connection with completed handshake
 pub struct WhatsAppConnection {
     pub ws: WebSocketStream<MaybeTlsStream<TcpStream>>,
-    pub send_cipher: Cipher,
-    pub recv_cipher: Cipher,
+    pub write_key: [u8; 32],
+    pub read_key: [u8; 32],
+    pub write_counter: u32,
+    pub read_counter: u32,
     pub device: Device,
 }
 
 impl WhatsAppConnection {
     /// Send an encrypted frame
     pub async fn send(&mut self, data: &[u8]) -> Result<(), HandshakeError> {
-        let encrypted = self.send_cipher.encrypt(data, &[])
+        let cipher = Aes256Gcm::new_from_slice(&self.write_key)
+            .map_err(|_| HandshakeError::CryptoError("invalid key".to_string()))?;
+        
+        let mut iv = [0u8; 12];
+        iv[8..12].copy_from_slice(&self.write_counter.to_be_bytes());
+        let nonce = Nonce::from_slice(&iv);
+        
+        let encrypted = cipher.encrypt(nonce, data)
             .map_err(|_| HandshakeError::CryptoError("encryption failed".to_string()))?;
+        
+        self.write_counter += 1;
         
         // Frame format: length (3 bytes) + encrypted data
         let len = encrypted.len();
@@ -169,10 +215,47 @@ impl WhatsAppConnection {
                 if data.len() < 3 {
                     return Err(HandshakeError::InvalidResponse("frame too short".to_string()));
                 }
-                // Skip length prefix and decrypt
+                
+                // Parse length header
+                let frame_len = ((data[0] as usize) << 16) 
+                              | ((data[1] as usize) << 8) 
+                              | (data[2] as usize);
+                
+                println!("   [recv] Frame: {} total, length header says {}, counter={}", 
+                         data.len(), frame_len, self.read_counter);
+                
+                // The encrypted data is after the 3-byte length prefix
                 let encrypted = &data[3..];
-                self.recv_cipher.decrypt(encrypted, &[])
-                    .map_err(|_| HandshakeError::CryptoError("decryption failed".to_string()))
+                
+                if encrypted.is_empty() {
+                    return Err(HandshakeError::InvalidResponse("empty encrypted data".to_string()));
+                }
+                
+                let cipher = Aes256Gcm::new_from_slice(&self.read_key)
+                    .map_err(|_| HandshakeError::CryptoError("invalid key".to_string()))?;
+                
+                let mut iv = [0u8; 12];
+                iv[8..12].copy_from_slice(&self.read_counter.to_be_bytes());
+                let nonce = Nonce::from_slice(&iv);
+                
+                println!("   [recv] Encrypted {} bytes, IV={:02x?}", encrypted.len(), &iv[8..12]);
+                
+                match cipher.decrypt(nonce, encrypted) {
+                    Ok(decrypted) => {
+                        self.read_counter += 1;
+                        Ok(decrypted)
+                    }
+                    Err(_) => {
+                        // Maybe the data is already decrypted binary XML?
+                        // The 0xf8 byte is a common binary token
+                        if data[0] == 0x00 && (data[1] == 0xf8 || data.len() < 20) {
+                            println!("   [recv] Treating as unencrypted binary data");
+                            Ok(data.to_vec())
+                        } else {
+                            Err(HandshakeError::CryptoError("decryption failed".to_string()))
+                        }
+                    }
+                }
             }
             Message::Close(_) => Err(HandshakeError::ConnectionFailed("connection closed".to_string())),
             _ => Err(HandshakeError::InvalidResponse("unexpected message type".to_string())),
@@ -190,60 +273,63 @@ pub async fn do_handshake(device: &Device) -> Result<WhatsAppConnection, Handsha
     let signed_prekey = device.signed_pre_key.as_ref()
         .ok_or(HandshakeError::ProtocolError("no signed prekey".to_string()))?;
 
-    // Generate ephemeral key pair
-    let ephemeral = KeyPair::generate();
+    // Generate ephemeral key pair for this session
+    let ephemeral_priv: [u8; 32] = rand::random();
+    let ephemeral_pub = x25519_dalek::x25519(ephemeral_priv, x25519_dalek::X25519_BASEPOINT_BYTES);
 
     // Connect to WhatsApp
     println!("   Connecting to {}...", WA_ENDPOINT);
+
     let (mut ws, _) = timeout(Duration::from_secs(10), connect_async(WA_ENDPOINT)).await
         .map_err(|_| HandshakeError::Timeout)?
         .map_err(|e| HandshakeError::ConnectionFailed(e.to_string()))?;
     println!("   ✓ Connected");
 
-    // Initialize Noise state
-    let mut noise = NoiseHandshakeState::new(WA_HEADER);
+    // Initialize Noise handshake state
+    let mut noise = NoiseHandshake::new(&WA_HEADER);
 
-    // === Message 1: -> e ===
+    // === Message 1: -> e (send ephemeral public key) ===
     println!("   Sending handshake message 1 (-> e)...");
-    noise.mix_hash(&ephemeral.public);
+    
+    // Authenticate ephemeral public (mix into hash)
+    noise.authenticate(&ephemeral_pub);
 
     let client_hello = HandshakeMessage {
         client_hello: Some(ClientHello {
-            ephemeral: Some(ephemeral.public.to_vec()),
+            ephemeral: Some(ephemeral_pub.to_vec()),
         }),
         server_hello: None,
         client_finish: None,
     };
     
-    let mut msg1_data = Vec::new();
-    client_hello.encode(&mut msg1_data)
+    let mut msg1_proto = Vec::new();
+    client_hello.encode(&mut msg1_proto)
         .map_err(|e| HandshakeError::ProtocolError(e.to_string()))?;
 
-    // First frame: WA header (intro) + 3-byte length + protobuf
-    // The intro header WA\x06\x00 is sent only once at connection start
+    // First frame: WA header + 3-byte length + protobuf
     let mut frame = Vec::new();
-    frame.extend_from_slice(WA_HEADER); // WA\x06\x00 - connection intro
-    // Then length prefix (3 bytes, big-endian)
-    let len = msg1_data.len();
+    frame.extend_from_slice(&WA_HEADER);
+    let len = msg1_proto.len();
     frame.push(((len >> 16) & 0xFF) as u8);
     frame.push(((len >> 8) & 0xFF) as u8);
     frame.push((len & 0xFF) as u8);
-    frame.extend_from_slice(&msg1_data);
+    frame.extend_from_slice(&msg1_proto);
     
-    println!("   Frame: {} bytes (header: {:02x?})", frame.len(), &frame[..7.min(frame.len())]);
+    println!("   Sending {} bytes: header={:02x?}, length={}", 
+             frame.len(), &frame[..4], len);
     
     ws.send(Message::Binary(frame.into())).await
         .map_err(|e| HandshakeError::ConnectionFailed(e.to_string()))?;
-    println!("   ✓ Message 1 sent ({} bytes protobuf)", len);
+    println!("   ✓ Message 1 sent");
 
     // === Message 2: <- e, ee, s, es ===
     println!("   Waiting for handshake message 2...");
     
     // Accumulate response data
     let mut response_data = Vec::new();
+    let mut frame_len: Option<usize> = None;
     
-    // Give server time to respond with full frame
-    for attempt in 0..5 {
+    for attempt in 0..10 {
         let response = timeout(Duration::from_secs(5), ws.next()).await
             .map_err(|_| HandshakeError::Timeout)?
             .ok_or(HandshakeError::ConnectionFailed("no response".to_string()))?
@@ -251,21 +337,34 @@ pub async fn do_handshake(device: &Device) -> Result<WhatsAppConnection, Handsha
 
         match response {
             Message::Binary(data) => {
-                println!("   ✓ Received {} bytes: {:02x?}", data.len(), &data[..data.len().min(16)]);
                 response_data.extend_from_slice(&data);
+                println!("   ✓ Received {} bytes (attempt {}): {:02x?}...", 
+                         data.len(), attempt + 1, &data[..data.len().min(20)]);
                 
-                // If we got a reasonable amount of data, try to parse
-                if response_data.len() >= 100 {
-                    break;
+                // Parse frame length once we have at least 3 bytes
+                if frame_len.is_none() && response_data.len() >= 3 {
+                    let len = ((response_data[0] as usize) << 16) 
+                            | ((response_data[1] as usize) << 8) 
+                            | (response_data[2] as usize);
+                    frame_len = Some(len);
+                    println!("   Frame declares {} bytes of content", len);
+                }
+                
+                // Check if we have complete frame
+                if let Some(len) = frame_len {
+                    if response_data.len() >= len + 3 {
+                        // Extract just the protobuf content
+                        response_data = response_data[3..3+len].to_vec();
+                        println!("   ✓ Complete frame received: {} bytes protobuf", response_data.len());
+                        break;
+                    }
                 }
             }
             Message::Close(frame) => {
                 let reason = frame.map(|f| format!("{}: {}", f.code, f.reason)).unwrap_or_default();
                 return Err(HandshakeError::ConnectionFailed(format!("server closed: {}", reason)));
             }
-            _ => {
-                println!("   Got other message type on attempt {}", attempt);
-            }
+            _ => {}
         }
     }
     
@@ -273,29 +372,12 @@ pub async fn do_handshake(device: &Device) -> Result<WhatsAppConnection, Handsha
         return Err(HandshakeError::InvalidResponse("no data received".to_string()));
     }
 
-    // Try to find where the protobuf starts - skip potential length header
-    let proto_start = if response_data.len() >= 3 {
-        let potential_len = ((response_data[0] as usize) << 16) 
-                          | ((response_data[1] as usize) << 8) 
-                          | (response_data[2] as usize);
-        if potential_len > 0 && potential_len <= response_data.len() - 3 && potential_len < 10000 {
-            println!("   Detected length prefix: {} bytes", potential_len);
-            3
-        } else {
-            0
-        }
-    } else {
-        0
-    };
-    
-    let proto_data = &response_data[proto_start..];
-    println!("   Decoding {} bytes of protobuf...", proto_data.len());
-
-    let server_hello_msg = HandshakeMessage::decode(proto_data)
-        .map_err(|e| HandshakeError::ProtocolError(format!("failed to decode: {}", e)))?;
+    // Decode server hello
+    let server_hello_msg = HandshakeMessage::decode(&response_data[..])
+        .map_err(|e| HandshakeError::ProtocolError(format!("failed to decode HandshakeMessage: {}", e)))?;
 
     let server_hello = server_hello_msg.server_hello
-        .ok_or(HandshakeError::InvalidResponse("missing server_hello".to_string()))?;
+        .ok_or(HandshakeError::InvalidResponse("missing server_hello in response".to_string()))?;
 
     let server_ephemeral = server_hello.ephemeral
         .ok_or(HandshakeError::InvalidResponse("missing server ephemeral".to_string()))?;
@@ -305,44 +387,50 @@ pub async fn do_handshake(device: &Device) -> Result<WhatsAppConnection, Handsha
         .ok_or(HandshakeError::InvalidResponse("missing server payload".to_string()))?;
 
     if server_ephemeral.len() != 32 {
-        return Err(HandshakeError::InvalidResponse("invalid server ephemeral length".to_string()));
+        return Err(HandshakeError::InvalidResponse(
+            format!("invalid server ephemeral length: {} (expected 32)", server_ephemeral.len())
+        ));
     }
 
-    let mut server_ephemeral_arr = [0u8; 32];
-    server_ephemeral_arr.copy_from_slice(&server_ephemeral);
+    let mut server_eph_arr = [0u8; 32];
+    server_eph_arr.copy_from_slice(&server_ephemeral);
 
-    // Mix server ephemeral
-    noise.mix_hash(&server_ephemeral);
+    println!("   Server ephemeral: {:02x?}...", &server_ephemeral[..8]);
 
-    // ee: DH(ephemeral, server_ephemeral)
-    let shared_ee = ephemeral.dh(&server_ephemeral_arr);
-    noise.mix_shared_secret(&shared_ee);
+    // Authenticate server ephemeral
+    noise.authenticate(&server_ephemeral);
 
-    // Decrypt server static
+    // ee: DH(ephemeral_priv, server_ephemeral)
+    noise.mix_shared_secret(&ephemeral_priv, &server_eph_arr)?;
+
+    // Decrypt server static public key
     let server_static = noise.decrypt(&server_static_ciphertext)?;
     if server_static.len() != 32 {
-        return Err(HandshakeError::InvalidResponse("invalid server static length".to_string()));
+        return Err(HandshakeError::InvalidResponse(
+            format!("invalid server static length: {} (expected 32)", server_static.len())
+        ));
     }
     let mut server_static_arr = [0u8; 32];
     server_static_arr.copy_from_slice(&server_static);
 
-    // es: DH(ephemeral, server_static)
-    let shared_es = ephemeral.dh(&server_static_arr);
-    noise.mix_shared_secret(&shared_es);
+    println!("   Server static: {:02x?}...", &server_static[..8]);
 
-    // Decrypt and verify certificate (simplified - just decrypt)
+    // es: DH(ephemeral_priv, server_static)
+    noise.mix_shared_secret(&ephemeral_priv, &server_static_arr)?;
+
+    // Decrypt certificate (we don't verify it for now, just decrypt)
     let _cert = noise.decrypt(&cert_ciphertext)?;
-    println!("   ✓ Server certificate decrypted");
+    println!("   ✓ Server certificate decrypted ({} bytes)", _cert.len());
 
     // === Message 3: -> s, se ===
     println!("   Sending handshake message 3 (-> s, se)...");
 
-    // Encrypt our static key
-    let static_encrypted = noise.encrypt(&noise_key.public);
+    // Encrypt our static public key
+    let static_encrypted = noise.encrypt(&noise_key.public)?;
 
-    // se: DH(noise_key, server_ephemeral)
-    let shared_se = noise_key.dh(&server_ephemeral_arr);
-    noise.mix_shared_secret(&shared_se);
+    // se: DH(noise_priv, server_ephemeral)
+    let noise_priv: [u8; 32] = noise_key.private;
+    noise.mix_shared_secret(&noise_priv, &server_eph_arr)?;
 
     // Build client payload with device pairing data
     let signature = signed_prekey.signature.unwrap_or([0u8; 64]);
@@ -361,7 +449,7 @@ pub async fn do_handshake(device: &Device) -> Result<WhatsAppConnection, Handsha
     client_payload.encode(&mut payload_bytes)
         .map_err(|e| HandshakeError::ProtocolError(e.to_string()))?;
 
-    let payload_encrypted = noise.encrypt(&payload_bytes);
+    let payload_encrypted = noise.encrypt(&payload_bytes)?;
 
     let client_finish = HandshakeMessage {
         client_hello: None,
@@ -376,18 +464,28 @@ pub async fn do_handshake(device: &Device) -> Result<WhatsAppConnection, Handsha
     client_finish.encode(&mut msg3_data)
         .map_err(|e| HandshakeError::ProtocolError(e.to_string()))?;
 
-    ws.send(Message::Binary(msg3_data.into())).await
+    // Frame: 3-byte length + protobuf (no header on subsequent frames)
+    let len3 = msg3_data.len();
+    let mut frame3 = Vec::with_capacity(len3 + 3);
+    frame3.push(((len3 >> 16) & 0xFF) as u8);
+    frame3.push(((len3 >> 8) & 0xFF) as u8);
+    frame3.push((len3 & 0xFF) as u8);
+    frame3.extend_from_slice(&msg3_data);
+
+    ws.send(Message::Binary(frame3.into())).await
         .map_err(|e| HandshakeError::ConnectionFailed(e.to_string()))?;
-    println!("   ✓ Message 3 sent");
+    println!("   ✓ Message 3 sent ({} bytes)", len3);
 
     // Get final ciphers
-    let (send_cipher, recv_cipher) = noise.finish();
+    let (write_key, read_key) = noise.finish()?;
     println!("   ✓ Handshake complete!");
 
     Ok(WhatsAppConnection {
         ws,
-        send_cipher,
-        recv_cipher,
+        write_key,
+        read_key,
+        write_counter: 0,
+        read_counter: 0,
         device: device.clone(),
     })
 }
