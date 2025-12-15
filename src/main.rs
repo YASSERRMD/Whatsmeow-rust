@@ -162,6 +162,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(ClientError::QrLoginMissing) => {
                 eprintln!("Generate a QR token first using generate-qr.");
             }
+            Err(ClientError::QrLoginExpired) => {
+                eprintln!("QR token expired. Generate a fresh code with generate-qr.");
+            }
             Err(ClientError::QrLoginMismatch) => {
                 eprintln!("Provided token does not match the active QR login.");
             }

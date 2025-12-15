@@ -156,6 +156,8 @@ impl WhatsmeowClient {
             .ok_or(ClientError::QrLoginMissing)?;
 
         if login.expires_at < Utc::now() {
+            // Clear the expired token so callers can immediately generate a new one.
+            self.state.qr_login = None;
             return Err(ClientError::QrLoginExpired);
         }
 
@@ -352,5 +354,6 @@ mod tests {
         let result = client.verify_qr_login("expired");
 
         assert!(matches!(result, Err(ClientError::QrLoginExpired)));
+        assert!(client.state.qr_login.is_none());
     }
 }

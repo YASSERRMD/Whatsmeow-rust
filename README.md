@@ -63,7 +63,8 @@ identifier.
   latency, status code, and any error message in the session based on a real
   HTTP request to the configured endpoint.
 - Call `generate-qr` followed by `verify-qr --token <token>` to simulate QR
-  login token issuance and verification. Expired QR tokens are rejected.
+  login token issuance and verification. Expired QR tokens are rejected and
+  cleared so you can immediately generate a fresh code.
 - Messages are encrypted with AES-256-GCM using a key derived from your
   `encryption_secret` (SHA-256). The stored ciphertext includes the nonce and
   authentication tag; use `decrypt-message --id <message-id>` to view the
