@@ -18,3 +18,4 @@ base64 = "0.21"
 aes-gcm = { version = "0.10", features = ["std"] }
 sha2 = "0.10"
 ureq = { version = "2.9", default-features = false, features = ["tls", "json"] }
+regex = "1"

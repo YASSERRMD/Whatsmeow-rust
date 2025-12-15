@@ -9,10 +9,19 @@
 //! simulations to mirror upstream concerns. Replace them with production-grade
 //! protocol implementations before building on this scaffold.
 
+pub mod barq_api;
+pub mod barq_core;
 pub mod client;
 pub mod config;
 pub mod state;
 
+pub use barq_api::{
+    ExplainScore, HybridSearchRequest, KeywordSearchRequest, SearchResponse, SearchWeights,
+};
+pub use barq_core::{
+    Bm25Config, Collection, Document, EnglishAnalyzer, ScoredDoc, TextField, bm25_search,
+    cosine_similarity, vector_search,
+};
 pub use client::{ClientError, WhatsmeowClient};
 pub use config::WhatsmeowConfig;
 pub use state::{MediaItem, MessageStatus, NetworkState, QrLogin, SessionState};
