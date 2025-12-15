@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf};
 
 use clap::{Parser, Subcommand};
 use uuid::Uuid;
-use whatsmeow_rust::{ClientError, MessageStatus, SessionState, WhatsmeowClient, WhatsmeowConfig};
+use whatsmeow_rust::{ScaffoldClientError as ClientError, MessageStatus, SessionState, WhatsmeowClient, WhatsmeowConfig};
 
 /// Reference CLI demonstrating the Whatsmeow Rust scaffolding.
 #[derive(Parser, Debug)]
