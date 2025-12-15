@@ -1,0 +1,221 @@
+   Compiling whatsmeow-rust v0.1.0 (/Users/mdyasser/Documents/projects/whatsmeow-rust/Whatsmeow-rust)
+warning: unused import: `tokio_tungstenite::tungstenite::http::Request`
+ --> src/socket/handshake.rs:8:5
+  |
+8 | use tokio_tungstenite::tungstenite::http::Request;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `KeyPair`
+  --> src/socket/handshake.rs:15:21
+   |
+15 | use crate::crypto::{KeyPair, Hkdf};
+   |                     ^^^^^^^
+
+warning: unused import: `ClientPayload`
+  --> src/socket/handshake.rs:19:5
+   |
+19 |     ClientPayload, make_web_client_payload, make_device_pairing_data,
+   |     ^^^^^^^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+ --> src/store/device.rs:7:5
+  |
+7 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `IdentityRecord` and `SessionRecord`
+ --> src/store/traits.rs:7:69
+  |
+7 | use crate::store::{Device, ContactInfo, ChatSettings, PreKeyRecord, SessionRecord, IdentityRecord};
+  |                                                                     ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+
+warning: unused import: `std::future::Future`
+ --> src/store/traits.rs:8:5
+  |
+8 | use std::future::Future;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::crypto::KeyPair`
+  --> src/protocol/client.rs:10:5
+   |
+10 | use crate::crypto::KeyPair;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `SocketError`
+  --> src/protocol/client.rs:11:34
+   |
+11 | use crate::socket::{NoiseSocket, SocketError, endpoints};
+   |                                  ^^^^^^^^^^^
+
+warning: unused import: `DeviceStore`
+  --> src/protocol/client.rs:12:48
+   |
+12 | use crate::store::{Device, MemoryStore, Store, DeviceStore};
+   |                                                ^^^^^^^^^^^
+
+warning: unused import: `crate::crypto::KeyPair`
+ --> src/protocol/qr.rs:9:5
+  |
+9 | use crate::crypto::KeyPair;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `AttrValue`
+ --> src/protocol/message.rs:6:27
+  |
+6 | use crate::binary::{Node, AttrValue};
+  |                           ^^^^^^^^^
+
+warning: use of deprecated function `base64::encode`: Use Engine::encode
+  --> src/protocol/qr.rs:66:30
+   |
+66 |             .map(|k| base64::encode(&k.public))
+   |                              ^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated function `base64::encode`: Use Engine::encode
+  --> src/protocol/qr.rs:70:30
+   |
+70 |             .map(|k| base64::encode(&k.public))
+   |                              ^^^^^^
+
+warning: use of deprecated function `base64::encode`: Use Engine::encode
+  --> src/protocol/qr.rs:74:30
+   |
+74 |             .map(|k| base64::encode(k))
+   |                              ^^^^^^
+
+warning: method `has_more` is never used
+  --> src/binary/decoder.rs:49:8
+   |
+27 | impl<'a> Decoder<'a> {
+   | -------------------- method in this implementation
+...
+49 |     fn has_more(&self) -> bool {
+   |        ^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `store` is never read
+  --> src/protocol/client.rs:45:5
+   |
+39 | pub struct Client {
+   |            ------ field in this struct
+...
+45 |     store: Arc<dyn Store>,
+   |     ^^^^^
+
+warning: field `device` is never read
+  --> src/protocol/qr.rs:38:5
+   |
+36 | pub struct QRPairing {
+   |            --------- field in this struct
+37 |     /// Device being paired
+38 |     device: Device,
+   |     ^^^^^^
+
+warning: function `is_iq_result` is never used
+   --> src/protocol/request.rs:101:8
+    |
+101 | pub fn is_iq_result(node: &Node) -> bool {
+    |        ^^^^^^^^^^^^
+
+warning: function `is_iq_error` is never used
+   --> src/protocol/request.rs:106:8
+    |
+106 | pub fn is_iq_error(node: &Node) -> bool {
+    |        ^^^^^^^^^^^
+
+warning: function `get_iq_error` is never used
+   --> src/protocol/request.rs:111:8
+    |
+111 | pub fn get_iq_error(node: &Node) -> Option<String> {
+    |        ^^^^^^^^^^^^
+
+warning: `whatsmeow-rust` (lib) generated 20 warnings (run `cargo fix --lib -p whatsmeow-rust` to apply 11 suggestions)
+warning: unused import: `WhatsAppConnection`
+  --> examples/whatsapp_echo.rs:15:28
+   |
+15 |     socket::{do_handshake, WhatsAppConnection},
+   |                            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `whatsmeow-rust` (example "whatsapp_echo") generated 1 warning (run `cargo fix --example "whatsapp_echo"` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.89s
+     Running `target/debug/examples/whatsapp_echo`
+╔════════════════════════════════════════════════════════════╗
+║     WhatsApp Echo Bot - Full Connection                    ║
+╚════════════════════════════════════════════════════════════╝
+
+📱 Initializing device...
+   ✓ Device initialized
+   ✓ Registration ID: 4900
+
+📲 QR Code for pairing (scan with WhatsApp):
+
+   █████████████████████████████████████████████████████████
+   █████████████████████████████████████████████████████████
+   ████ ▄▄▄▄▄ ██▄▀ ▀▄▀  ▄▀▀ ▀▄▄▄ █▄▀  ▄█▄█▀█ ▀▀ █ ▄▄▄▄▄ ████
+   ████ █   █ █ ▄█▄▄▄▀▀█▄▄▀▄██  ██▄███▀█▀▄▀▄██ ▄█ █   █ ████
+   ████ █▄▄▄█ █ ▄█▄█▀▀▄ █▄▀█▄ ▄▄▄  ▄▀ ▀▄▄█▄ ▀▀███ █▄▄▄█ ████
+   ████▄▄▄▄▄▄▄█ █ █▄█▄▀ █ █▄▀ █▄█ ▀▄█▄█▄█ ▀ █ ▀ █▄▄▄▄▄▄▄████
+   ████▄▀ ▄  ▄▀█▀▄ █ ▀█▀  ▄█▀     ▄█▄▀ ▀▀█▄   ▄█▀▄▄▄▄▄▀▀████
+   ████▀█▀▄▀▄▄▀ ▀ ▀▄▀ ▀█ ▄▀▀▄▄ ▀ ▀█▄ ▄ ▄█▀ ▀ █▀▄  ▄▄ █▀ ████
+   ████▄█ █ █▄█▄▄▀▄█▀▄▀  ▄▀▀ ▀▀██▄▄▄▀ █▀▄▄▀▄▀▀▀█▀ █▄▀▀▀▀████
+   █████▄█▀█▄▄██▀▀██▄ ▄ ▄▀▀  ▀▀  ▀▄▄▄▄▀▄▀██▀ ▀▀▄▄▄ █▀▄██████
+   ██████▀ █▄▄█ █ ▄▄▄██   █▀█▀▀▀ ▄█▄  ▄▀▄   ▀██▀▄▄▄█▀█▀ ████
+   ████▀█▄██▀▄ ▀▄▄  ▀▄██▀ ▀█ ▀▀▀▀█▄▄   █▀▀▀▀▄█▀█▄▄ █ ▄██████
+   ████▀██ ▀▀▄ ██ █▀▄▄ ▀▀██▀▀▀█▀█▀▀▄█▀▀ ▀▄█▀▀▄██▀███ ▄▀ ████
+   ████▀▄█▄ ▄▄▄ ▄▄▄▀▄▀█ ▄▄▀▄█ ▄▄▄ ▀▄▄▄█▄▀█▄▀██  ▄▄▄  ▀▀▄████
+   █████  ▀ █▄█ ▄█ ▀ ███ █▄▀  █▄█ ▀▄▀ ▄██▄▄▄▀ ▄ █▄█ ▀▀▀ ████
+   ██████▄▀▄▄▄   █▄▀█▀██ █▄▀▄▄   ▄▄▄▀ ▀█ ▀█▀▄▀▀▄  ▄ █▄▀▀████
+   ████▄█▀█ █▄▀▄ █ ▀█  ▄▄ ██▄ ▄ ▀▀▀▀ ▄██▄▀ ▀▀▀   ▀▄█▀█▄█████
+   ████▄█▄▀▀█▄█▀▀██▄ ▄ █▀███▄ ▀▀▀█▄█▄  ██▀▀ ▀█▀▄▀  █ ▀▀▄████
+   ████▀▀▀▄██▄ ▀█ ▄▀██▀█ █ ▀▄▀▄  ▄▄ ▄ ▄  ▄█▀▀▀▀ ██ ▀██▀ ████
+   ████ █ ▄▀▀▄█▀ ▀ █▄▀██ ▀▄█▄▄▄▄▀▄ ▄▄▄▀█▀▀  ▄█ ▄▄ ▀█▄█ ▀████
+   ████▀▀▄██ ▄▄▀▀█▄▄▄██▄█▀ ▀▄▀▄▄▀    █▀▀▄▄  ▄▀▄▀▀█▄██   ████
+   █████ ▀▀█▄▄█  ▀ ▀▀▄▀ ▀  ▀▄ ▄▀▀██▄ ▄▀██▀ ▀▀ ██▀  █ ▀▄▄████
+   ████▄▄▄███▄▄▀▄▄▄█▀  ██▀ █▄ ▄▄▄ █▄▀▀▄▄▄█▀▀▄██ ▄▄▄ █▀ ▀████
+   ████ ▄▄▄▄▄ █▀ ▄ ▀▀▄▀█▄█▀██ █▄█ ▄█▄  ██▀▄█ ▀  █▄█ ▄██▀████
+   ████ █   █ █ ▀▀  ▄▀█ ▀▄▀██▄  ▄ ▀█▀▄█▀ ▀▀ ▀▀ ▄ ▄▄▄▀▀▄▀████
+   ████ █▄▄▄█ █▄▄▄▄▄██▄█▀█  ▀█▀  ▀▄█▄ ▀▄▀▀▀ █▀▄▄▀▄▄ █▄█▄████
+   ████▄▄▄▄▄▄▄█▄▄███▄▄█▄█▄▄█▄▄██▄█▄▄▄█▄▄▄▄███▄█▄▄▄▄▄███▄████
+   █████████████████████████████████████████████████████████
+   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+
+🔐 Connecting to WhatsApp servers...
+   Connecting to wss://web.whatsapp.com/ws/chat...
+   ✓ Connected
+   Sending handshake message 1 (-> e)...
+   Sending 43 bytes: header=[57, 41, 06, 03], length=36
+   ✓ Message 1 sent
+   Waiting for handshake message 2...
+   ✓ Received 350 bytes (attempt 1): [00, 01, 5b, 1a, d8, 02, 0a, 20, d6, bb, 78, be, ea, 07, a5, bf, 23, 6b, b6, 8a]...
+   Frame declares 347 bytes of content
+   ✓ Complete frame received: 347 bytes protobuf
+   Server ephemeral: [d6, bb, 78, be, ea, 07, a5, bf]...
+   Server static: [5d, c1, af, 03, a7, 42, fe, e3]...
+   ✓ Server certificate decrypted (241 bytes)
+   Sending handshake message 3 (-> s, se)...
+   ✓ Message 3 sent (383 bytes)
+   ✓ Handshake complete!
+
+╔════════════════════════════════════════════════════════════╗
+║  ✅ HANDSHAKE COMPLETE - CONNECTED TO WHATSAPP!            ║
+╚════════════════════════════════════════════════════════════╝
+
+Waiting for messages... (Press Ctrl+C to exit)
+
+   [recv] Frame: 37 total, header says 34, counter=0
+📨 Received 18 bytes
+   Raw: [00, f8, 05, ee, 3c, ec, 2e, fc, 03, 34, 30, 35, 3d, fc, 03, 6c, 6c, 61]
+   Skipping flags byte
+   Binary XML list with 5 items
+   ✓ Decoded: <failure>
+     @location: String("lla")
+     @reason: String("405")
+   [recv] Skipping malformed frame (len=8913411, data=4)
+⚠ Connection error: connection failed: WebSocket protocol error: Connection reset without closing handshake

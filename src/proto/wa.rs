@@ -127,7 +127,35 @@ pub struct WebInfo {
     #[prost(string, optional, tag = "2")]
     pub version: Option<String>,
     #[prost(message, optional, tag = "3")]
+    pub webd_payload: Option<WebdPayload>,
+    #[prost(message, optional, tag = "4")]
     pub web_sub_platform: Option<WebSubPlatform>,
+}
+
+#[derive(Clone, PartialEq, Message)]
+pub struct WebdPayload {
+    #[prost(bool, optional, tag = "1")]
+    pub uses_participant_in_key: Option<bool>,
+    #[prost(bool, optional, tag = "2")]
+    pub supports_starred_messages: Option<bool>,
+    #[prost(bool, optional, tag = "3")]
+    pub supports_document_messages: Option<bool>,
+    #[prost(bool, optional, tag = "4")]
+    pub supports_url_messages: Option<bool>,
+    #[prost(bool, optional, tag = "5")]
+    pub supports_media_retry: Option<bool>,
+    #[prost(bool, optional, tag = "6")]
+    pub supports_e2e_image: Option<bool>,
+    #[prost(bool, optional, tag = "7")]
+    pub supports_e2e_video: Option<bool>,
+    #[prost(bool, optional, tag = "8")]
+    pub supports_e2e_audio: Option<bool>,
+    #[prost(bool, optional, tag = "9")]
+    pub supports_e2e_document: Option<bool>,
+    #[prost(string, optional, tag = "10")]
+    pub document_types: Option<String>,
+    #[prost(bytes, optional, tag = "11")]
+    pub features: Option<Vec<u8>>,
 }
 
 #[derive(Clone, PartialEq, Message)]
@@ -212,24 +240,25 @@ pub fn make_web_client_payload(push_name: Option<&str>) -> ClientPayload {
             platform: Some(platform::WEB),
             app_version: Some(AppVersion {
                 primary: Some(2),
-                secondary: Some(3000),
-                tertiary: Some(1012170356),
-                quaternary: Some(0),
+                secondary: Some(24),
+                tertiary: Some(8),
+                quaternary: Some(84),
                 quinary: Some(0),
             }),
             release_channel: Some(release_channel::RELEASE),
             mcc_mnc: Some("000000".to_string()),
             os_version: Some("10.15.7".to_string()),
             device: Some("macOS".to_string()),
-            lc: Some("US".to_string()),
+            lc: Some("en".to_string()),
             locale: Some("en".to_string()),
             manufacturer: Some("Google Chrome".to_string()),
-            os_build_number: Some("121.0.6167.184".to_string()),
+            os_build_number: Some("2.24.8.84".to_string()),
             phone_id: None,
         }),
         web_info: Some(WebInfo {
             ref_token: None,
-            version: Some("2.3000.1012170356".to_string()),
+            version: Some("2.24.8.84".to_string()),
+            webd_payload: None,
             web_sub_platform: Some(WebSubPlatform {
                 web_sub_platform: Some(web_sub_platform::WEB_BROWSER),
             }),
