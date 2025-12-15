@@ -29,6 +29,8 @@ pub struct SessionState {
     pub network: NetworkState,
     /// State of the most recent QR login flow.
     pub qr_login: Option<QrLogin>,
+    /// Media downloads recorded for inspection.
+    pub media: Vec<MediaItem>,
 }
 
 impl SessionState {
@@ -173,6 +175,26 @@ impl SessionState {
         message
     }
 
+    /// Record a media download and emit an event.
+    pub fn record_media(
+        &mut self,
+        source: impl Into<String>,
+        file_path: impl Into<String>,
+        bytes: u64,
+    ) -> MediaItem {
+        let item = MediaItem {
+            id: Uuid::new_v4(),
+            source: source.into(),
+            file_path: file_path.into(),
+            bytes,
+            downloaded_at: Utc::now(),
+        };
+        self.media.push(item.clone());
+        self.events
+            .push(SessionEvent::new(EventKind::MediaDownloaded(item.clone())));
+        item
+    }
+
     /// Save a new pairing code with expiry time and emit an event.
     pub fn set_pairing_code(&mut self, code: impl Into<String>, expires_at: DateTime<Utc>) {
         self.pairing_code = Some(PairingCode {
@@ -287,6 +309,7 @@ pub enum EventKind {
     MessageReceived(IncomingMessage),
     MessageStatusChanged { id: Uuid, status: MessageStatus },
     MessageEncrypted(Uuid),
+    MediaDownloaded(MediaItem),
 }
 
 /// Network connection metadata recorded per session.
@@ -321,4 +344,16 @@ pub struct QrLogin {
     #[serde(with = "chrono::serde::ts_seconds")]
     pub expires_at: DateTime<Utc>,
     pub verified: bool,
+}
+
+/// Media record stored after a simulated download.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MediaItem {
+    #[serde(with = "uuid::serde::compact")]
+    pub id: Uuid,
+    pub source: String,
+    pub file_path: String,
+    pub bytes: u64,
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub downloaded_at: DateTime<Utc>,
 }
