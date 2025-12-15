@@ -1,0 +1,934 @@
+{
+  "registered_jid": "full-demo-user@s.whatsapp.net",
+  "encryption_keys": [
+    "derived-key-for-full-demo-user@s.whatsapp.net"
+  ],
+  "device_name": "full-demo-device",
+  "contacts": [
+    {
+      "jid": "alice@demo.com",
+      "display_name": "alice@demo.com"
+    },
+    {
+      "jid": "bob@demo.com",
+      "display_name": "bob@demo.com"
+    },
+    {
+      "jid": "charlie@demo.com",
+      "display_name": "charlie@demo.com"
+    },
+    {
+      "jid": "security-test@demo.com",
+      "display_name": "security-test@demo.com"
+    }
+  ],
+  "outgoing_messages": [
+    {
+      "id": [
+        250,
+        108,
+        158,
+        158,
+        232,
+        69,
+        67,
+        206,
+        147,
+        65,
+        117,
+        102,
+        240,
+        236,
+        178,
+        82
+      ],
+      "to": "alice@demo.com",
+      "body": "Hello Alice! 👋",
+      "sent_at": 1765786120,
+      "status": "Read",
+      "ciphertext": "EkBKj26tE4YPWXdbHnqCuDHVBxKaDbpuu8CeUx6o5iyJpYdEJKqhVeRXmf4S"
+    },
+    {
+      "id": [
+        194,
+        209,
+        105,
+        173,
+        211,
+        25,
+        64,
+        166,
+        135,
+        72,
+        189,
+        73,
+        204,
+        238,
+        44,
+        53
+      ],
+      "to": "bob@demo.com",
+      "body": "Hey Bob, how's it going? 🚀",
+      "sent_at": 1765786120,
+      "status": "Read",
+      "ciphertext": "nCui5oxftMoNing/pVCfjBMp4g3QFuO5y3DhBRCYBN2zB8J2j6k3Wiv2eovzNX7zGOUdZ4H/Knug"
+    },
+    {
+      "id": [
+        167,
+        30,
+        56,
+        180,
+        157,
+        107,
+        70,
+        160,
+        179,
+        42,
+        176,
+        58,
+        252,
+        197,
+        114,
+        94
+      ],
+      "to": "charlie@demo.com",
+      "body": "Charlie, check this out! 🎉",
+      "sent_at": 1765786120,
+      "status": "Read",
+      "ciphertext": "n+WXtxVNkdjoOIH6crkJQCfRIeE9JAXHBaToFOPqLPomOAT190MqPz0i+bRp3jGkGkfYIzBQels8"
+    },
+    {
+      "id": [
+        58,
+        94,
+        88,
+        238,
+        177,
+        189,
+        77,
+        34,
+        143,
+        30,
+        138,
+        151,
+        253,
+        139,
+        102,
+        76
+      ],
+      "to": "security-test@demo.com",
+      "body": "This is a top-secret message! 🔐",
+      "sent_at": 1765786120,
+      "status": "Queued",
+      "ciphertext": "sfxFc3T1Iy7Huwe1OuAPHewBKdFIos010/IbSl65IPR+jHvSxVb55pGpB/ytwPCtZ1tZlZ2ClpOZw5yZPa4="
+    },
+    {
+      "id": [
+        94,
+        199,
+        161,
+        208,
+        252,
+        78,
+        77,
+        64,
+        140,
+        83,
+        179,
+        254,
+        96,
+        210,
+        20,
+        106
+      ],
+      "to": "alice@demo.com",
+      "body": "Hello Alice! 👋",
+      "sent_at": 1765786721,
+      "status": "Read",
+      "ciphertext": "tuC1Vfqci3LMOxpB9A/In0xsv1CdD3s5wtpwGcLEe3YsjAl04Ru0YaueTCAQ"
+    },
+    {
+      "id": [
+        85,
+        237,
+        188,
+        141,
+        231,
+        120,
+        73,
+        167,
+        185,
+        2,
+        18,
+        22,
+        135,
+        64,
+        132,
+        9
+      ],
+      "to": "bob@demo.com",
+      "body": "Hey Bob, how's it going? 🚀",
+      "sent_at": 1765786721,
+      "status": "Read",
+      "ciphertext": "KuaDcIMmkr/3L8gsE5pk5AZ6ECD8NY6vAeVr+0cVjgtEmOxJtDeWkDXKLJ5SZANBTGJ8rnzdfrip"
+    },
+    {
+      "id": [
+        201,
+        209,
+        83,
+        14,
+        96,
+        98,
+        74,
+        113,
+        161,
+        160,
+        40,
+        87,
+        43,
+        132,
+        17,
+        240
+      ],
+      "to": "charlie@demo.com",
+      "body": "Charlie, check this out! 🎉",
+      "sent_at": 1765786721,
+      "status": "Read",
+      "ciphertext": "SrHm+Jl84sTRzDqie5uRIAetzxfwVGtmuMF/XATrXc5HB52w6lNOzpkQH5Wkluvae0E3+BrLO6Ae"
+    },
+    {
+      "id": [
+        176,
+        97,
+        139,
+        122,
+        92,
+        136,
+        67,
+        13,
+        139,
+        31,
+        64,
+        71,
+        228,
+        209,
+        171,
+        15
+      ],
+      "to": "security-test@demo.com",
+      "body": "This is a top-secret message! 🔐",
+      "sent_at": 1765786721,
+      "status": "Queued",
+      "ciphertext": "FDuPq/LbpY3vqLxmNpoBOxu4Pf7LHPiL3yUB1PlzAgLUBtCPKs9ddz6+oR8fT4uHu9QnSr0cuzXRSOrfrZE="
+    }
+  ],
+  "incoming_messages": [
+    {
+      "id": [
+        181,
+        231,
+        100,
+        124,
+        9,
+        251,
+        76,
+        82,
+        191,
+        144,
+        187,
+        133,
+        89,
+        15,
+        71,
+        193
+      ],
+      "from": "alice@demo.com",
+      "body": "Hi there! Got your message 😊",
+      "received_at": 1765786120
+    },
+    {
+      "id": [
+        225,
+        157,
+        166,
+        28,
+        237,
+        170,
+        72,
+        146,
+        191,
+        55,
+        89,
+        105,
+        236,
+        26,
+        14,
+        127
+      ],
+      "from": "bob@demo.com",
+      "body": "All good here! 👍",
+      "received_at": 1765786120
+    },
+    {
+      "id": [
+        229,
+        214,
+        224,
+        44,
+        175,
+        237,
+        64,
+        36,
+        166,
+        224,
+        156,
+        78,
+        241,
+        128,
+        79,
+        237
+      ],
+      "from": "alice@demo.com",
+      "body": "Hi there! Got your message 😊",
+      "received_at": 1765786721
+    },
+    {
+      "id": [
+        160,
+        255,
+        236,
+        213,
+        150,
+        66,
+        68,
+        50,
+        132,
+        64,
+        97,
+        226,
+        15,
+        73,
+        97,
+        239
+      ],
+      "from": "bob@demo.com",
+      "body": "All good here! 👍",
+      "received_at": 1765786721
+    }
+  ],
+  "connected": false,
+  "last_connected": "2025-12-15T08:18:40.236438Z",
+  "pairing_code": {
+    "code": "TAxQbUX9",
+    "issued_at": 1765786721,
+    "expires_at": 1765787021
+  },
+  "events": [
+    {
+      "kind": "Registered",
+      "at": 1765786119
+    },
+    {
+      "kind": "Connected",
+      "at": 1765786119
+    },
+    {
+      "kind": {
+        "NetworkHandshaked": {
+          "endpoint": "https://httpbin.org/get",
+          "last_handshake": 1765786120,
+          "latency_ms": 817,
+          "status_code": 503,
+          "error": "unexpected status"
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            250,
+            108,
+            158,
+            158,
+            232,
+            69,
+            67,
+            206,
+            147,
+            65,
+            117,
+            102,
+            240,
+            236,
+            178,
+            82
+          ],
+          "to": "alice@demo.com",
+          "body": "Hello Alice! 👋",
+          "sent_at": 1765786120,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "fa6c9e9e-e845-43ce-9341-7566f0ecb252"
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "fa6c9e9e-e845-43ce-9341-7566f0ecb252",
+          "status": "Delivered"
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "fa6c9e9e-e845-43ce-9341-7566f0ecb252",
+          "status": "Read"
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            194,
+            209,
+            105,
+            173,
+            211,
+            25,
+            64,
+            166,
+            135,
+            72,
+            189,
+            73,
+            204,
+            238,
+            44,
+            53
+          ],
+          "to": "bob@demo.com",
+          "body": "Hey Bob, how's it going? 🚀",
+          "sent_at": 1765786120,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "c2d169ad-d319-40a6-8748-bd49ccee2c35"
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "c2d169ad-d319-40a6-8748-bd49ccee2c35",
+          "status": "Delivered"
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "c2d169ad-d319-40a6-8748-bd49ccee2c35",
+          "status": "Read"
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            167,
+            30,
+            56,
+            180,
+            157,
+            107,
+            70,
+            160,
+            179,
+            42,
+            176,
+            58,
+            252,
+            197,
+            114,
+            94
+          ],
+          "to": "charlie@demo.com",
+          "body": "Charlie, check this out! 🎉",
+          "sent_at": 1765786120,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "a71e38b4-9d6b-46a0-b32a-b03afcc5725e"
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "a71e38b4-9d6b-46a0-b32a-b03afcc5725e",
+          "status": "Delivered"
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "a71e38b4-9d6b-46a0-b32a-b03afcc5725e",
+          "status": "Read"
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageReceived": {
+          "id": [
+            181,
+            231,
+            100,
+            124,
+            9,
+            251,
+            76,
+            82,
+            191,
+            144,
+            187,
+            133,
+            89,
+            15,
+            71,
+            193
+          ],
+          "from": "alice@demo.com",
+          "body": "Hi there! Got your message 😊",
+          "received_at": 1765786120
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageReceived": {
+          "id": [
+            225,
+            157,
+            166,
+            28,
+            237,
+            170,
+            72,
+            146,
+            191,
+            55,
+            89,
+            105,
+            236,
+            26,
+            14,
+            127
+          ],
+          "from": "bob@demo.com",
+          "body": "All good here! 👍",
+          "received_at": 1765786120
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            58,
+            94,
+            88,
+            238,
+            177,
+            189,
+            77,
+            34,
+            143,
+            30,
+            138,
+            151,
+            253,
+            139,
+            102,
+            76
+          ],
+          "to": "security-test@demo.com",
+          "body": "This is a top-secret message! 🔐",
+          "sent_at": 1765786120,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "3a5e58ee-b1bd-4d22-8f1e-8a97fd8b664c"
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": "PairingCodeIssued",
+      "at": 1765786120
+    },
+    {
+      "kind": {
+        "QrCodeGenerated": {
+          "token": "Pp0gowcYcBaCYeVXIPhRxTll",
+          "issued_at": 1765786120,
+          "expires_at": 1765786720,
+          "verified": false
+        }
+      },
+      "at": 1765786120
+    },
+    {
+      "kind": "QrCodeVerified",
+      "at": 1765786120
+    },
+    {
+      "kind": "Disconnected",
+      "at": 1765786121
+    },
+    {
+      "kind": "Connected",
+      "at": 1765786720
+    },
+    {
+      "kind": {
+        "NetworkHandshaked": {
+          "endpoint": "https://httpbin.org/get",
+          "last_handshake": 1765786721,
+          "latency_ms": 805,
+          "status_code": 503,
+          "error": "unexpected status"
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            94,
+            199,
+            161,
+            208,
+            252,
+            78,
+            77,
+            64,
+            140,
+            83,
+            179,
+            254,
+            96,
+            210,
+            20,
+            106
+          ],
+          "to": "alice@demo.com",
+          "body": "Hello Alice! 👋",
+          "sent_at": 1765786721,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "5ec7a1d0-fc4e-4d40-8c53-b3fe60d2146a"
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "5ec7a1d0-fc4e-4d40-8c53-b3fe60d2146a",
+          "status": "Delivered"
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "5ec7a1d0-fc4e-4d40-8c53-b3fe60d2146a",
+          "status": "Read"
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            85,
+            237,
+            188,
+            141,
+            231,
+            120,
+            73,
+            167,
+            185,
+            2,
+            18,
+            22,
+            135,
+            64,
+            132,
+            9
+          ],
+          "to": "bob@demo.com",
+          "body": "Hey Bob, how's it going? 🚀",
+          "sent_at": 1765786721,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "55edbc8d-e778-49a7-b902-121687408409"
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "55edbc8d-e778-49a7-b902-121687408409",
+          "status": "Delivered"
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "55edbc8d-e778-49a7-b902-121687408409",
+          "status": "Read"
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            201,
+            209,
+            83,
+            14,
+            96,
+            98,
+            74,
+            113,
+            161,
+            160,
+            40,
+            87,
+            43,
+            132,
+            17,
+            240
+          ],
+          "to": "charlie@demo.com",
+          "body": "Charlie, check this out! 🎉",
+          "sent_at": 1765786721,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "c9d1530e-6062-4a71-a1a0-28572b8411f0"
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "c9d1530e-6062-4a71-a1a0-28572b8411f0",
+          "status": "Delivered"
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageStatusChanged": {
+          "id": "c9d1530e-6062-4a71-a1a0-28572b8411f0",
+          "status": "Read"
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageReceived": {
+          "id": [
+            229,
+            214,
+            224,
+            44,
+            175,
+            237,
+            64,
+            36,
+            166,
+            224,
+            156,
+            78,
+            241,
+            128,
+            79,
+            237
+          ],
+          "from": "alice@demo.com",
+          "body": "Hi there! Got your message 😊",
+          "received_at": 1765786721
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageReceived": {
+          "id": [
+            160,
+            255,
+            236,
+            213,
+            150,
+            66,
+            68,
+            50,
+            132,
+            64,
+            97,
+            226,
+            15,
+            73,
+            97,
+            239
+          ],
+          "from": "bob@demo.com",
+          "body": "All good here! 👍",
+          "received_at": 1765786721
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            176,
+            97,
+            139,
+            122,
+            92,
+            136,
+            67,
+            13,
+            139,
+            31,
+            64,
+            71,
+            228,
+            209,
+            171,
+            15
+          ],
+          "to": "security-test@demo.com",
+          "body": "This is a top-secret message! 🔐",
+          "sent_at": 1765786721,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "b0618b7a-5c88-430d-8b1f-4047e4d1ab0f"
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": "PairingCodeIssued",
+      "at": 1765786721
+    },
+    {
+      "kind": {
+        "QrCodeGenerated": {
+          "token": "iBPUCkc7QRIV1Wca4ntT1hMP",
+          "issued_at": 1765786721,
+          "expires_at": 1765787321,
+          "verified": false
+        }
+      },
+      "at": 1765786721
+    },
+    {
+      "kind": "QrCodeVerified",
+      "at": 1765786721
+    },
+    {
+      "kind": "Disconnected",
+      "at": 1765786721
+    }
+  ],
+  "network": {
+    "endpoint": "https://httpbin.org/get",
+    "last_handshake": 1765786721,
+    "latency_ms": 805,
+    "status_code": 503,
+    "error": "unexpected status"
+  },
+  "qr_login": {
+    "token": "iBPUCkc7QRIV1Wca4ntT1hMP",
+    "issued_at": 1765786721,
+    "expires_at": 1765787321,
+    "verified": true
+  },
+  "media": []
+}

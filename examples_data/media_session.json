@@ -1,0 +1,86 @@
+{
+  "registered_jid": "media-demo@s.whatsapp.net",
+  "encryption_keys": [
+    "derived-key-for-media-demo@s.whatsapp.net"
+  ],
+  "device_name": "media-demo",
+  "contacts": [],
+  "outgoing_messages": [],
+  "incoming_messages": [],
+  "connected": true,
+  "last_connected": "2025-12-15T08:17:04.490504Z",
+  "pairing_code": null,
+  "events": [
+    {
+      "kind": "Registered",
+      "at": 1765786624
+    },
+    {
+      "kind": "Connected",
+      "at": 1765786624
+    },
+    {
+      "kind": {
+        "MediaDownloaded": {
+          "id": [
+            133,
+            152,
+            207,
+            216,
+            239,
+            254,
+            74,
+            183,
+            179,
+            110,
+            92,
+            193,
+            99,
+            32,
+            199,
+            165
+          ],
+          "source": "https://raw.githubusercontent.com/YASSERRMD/Whatsmeow-rust/main/README.md",
+          "file_path": "./examples_data/downloads/readme.md",
+          "bytes": 4753,
+          "downloaded_at": 1765786635
+        }
+      },
+      "at": 1765786635
+    }
+  ],
+  "network": {
+    "endpoint": "https://chat.whatsmeow.test",
+    "last_handshake": null,
+    "latency_ms": null,
+    "status_code": null,
+    "error": null
+  },
+  "qr_login": null,
+  "media": [
+    {
+      "id": [
+        133,
+        152,
+        207,
+        216,
+        239,
+        254,
+        74,
+        183,
+        179,
+        110,
+        92,
+        193,
+        99,
+        32,
+        199,
+        165
+      ],
+      "source": "https://raw.githubusercontent.com/YASSERRMD/Whatsmeow-rust/main/README.md",
+      "file_path": "./examples_data/downloads/readme.md",
+      "bytes": 4753,
+      "downloaded_at": 1765786635
+    }
+  ]
+}

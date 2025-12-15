@@ -1,18 +1,31 @@
-//! Lightweight, documented scaffolding for a Rust port of the Whatsmeow client.
+//! Whatsmeow-rust: WhatsApp Web Protocol Library
 //!
-//! The upstream Whatsmeow project is a full-featured Go library for interacting
-//! with WhatsApp. This crate does not attempt to mirror every feature. Instead,
-//! it exposes a small set of building blocks—configuration, client state, and a
-//! simple client façade—that can be extended into a larger implementation.
+//! A Rust implementation of the WhatsApp Web protocol, ported from the
+//! [whatsmeow](https://github.com/tulir/whatsmeow) Go library.
 //!
-//! Networking, QR login, encryption, and persistence are implemented as local
-//! simulations to mirror upstream concerns. Replace them with production-grade
-//! protocol implementations before building on this scaffold.
+//! ## Modules
+//!
+//! - `types` - Core types like JID, MessageID, and events
+//! - `binary` - Binary XML encoding/decoding
+//! - `client` - High-level client API (coming in Phase 3)
+//! - `config` - Configuration management
+//! - `state` - Session state management
 
-pub mod client;
-pub mod config;
-pub mod state;
+pub mod types;
+pub mod binary;
 
-pub use client::{ClientError, WhatsmeowClient};
+// Re-export existing modules (from scaffold)
+mod client;
+mod config;
+mod state;
+
+pub use client::{WhatsmeowClient, ClientError};
 pub use config::WhatsmeowConfig;
-pub use state::{MediaItem, MessageStatus, NetworkState, QrLogin, SessionState};
+pub use state::{
+    Contact, IncomingMessage, MediaItem, MessageStatus, NetworkState, OutgoingMessage, PairingCode,
+    QrLogin, SessionEvent, SessionState,
+};
+
+// Re-export new protocol types
+pub use types::{JID, MessageID};
+pub use binary::{Node, encode, decode};

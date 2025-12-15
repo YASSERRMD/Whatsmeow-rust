@@ -1,20 +1,38 @@
 [package]
 name = "whatsmeow-rust"
 version = "0.1.0"
-edition = "2024"
-description = "Lightweight Rust scaffold inspired by the Whatsmeow library"
+edition = "2021"
+description = "Rust implementation of WhatsApp Web protocol, inspired by whatsmeow"
 authors = ["Whatsmeow Rust Port"]
-license = "MIT"
+license = "MPL-2.0"
 
 [dependencies]
-clap = { version = "4.5", features = ["derive"] }
+# Core utilities
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 rand = "0.8"
 uuid = { version = "1", features = ["serde", "v4"] }
+lazy_static = "1.4"
+log = "0.4"
+
+# Crypto (Phase 1-2)
 base64 = "0.21"
 aes-gcm = { version = "0.10", features = ["std"] }
 sha2 = "0.10"
+hmac = "0.12"
+
+# Networking (Phase 2)
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.21"
+futures = "0.3"
+
+# QR Code
+qrcode = "0.14"
+
+# CLI (for examples)
+clap = { version = "4.5", features = ["derive"] }
+
+# HTTP (for media)
 ureq = { version = "2.9", default-features = false, features = ["tls", "json"] }

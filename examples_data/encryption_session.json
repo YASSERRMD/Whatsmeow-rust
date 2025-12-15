@@ -1,0 +1,229 @@
+{
+  "registered_jid": "encrypt-demo@s.whatsapp.net",
+  "encryption_keys": [
+    "derived-key-for-encrypt-demo@s.whatsapp.net"
+  ],
+  "device_name": "encryption-demo",
+  "contacts": [
+    {
+      "jid": "alice@example.com",
+      "display_name": "alice@example.com"
+    },
+    {
+      "jid": "bob@example.com",
+      "display_name": "bob@example.com"
+    },
+    {
+      "jid": "charlie@example.com",
+      "display_name": "charlie@example.com"
+    }
+  ],
+  "outgoing_messages": [
+    {
+      "id": [
+        158,
+        75,
+        195,
+        55,
+        40,
+        140,
+        79,
+        60,
+        149,
+        200,
+        22,
+        221,
+        38,
+        250,
+        130,
+        244
+      ],
+      "to": "alice@example.com",
+      "body": "Hello Alice! This is a secret message 🤫",
+      "sent_at": 1765786081,
+      "status": "Queued",
+      "ciphertext": "codm/0cZYFpB1nti6IX4E/IVOFE9sTvxsFg+z5aQjoCdn0QJHAcihAg4sPMG2gddLuSCBn/COgbjGdcD6QIZKV8r7VyuQw=="
+    },
+    {
+      "id": [
+        69,
+        239,
+        40,
+        196,
+        187,
+        210,
+        79,
+        248,
+        176,
+        197,
+        215,
+        55,
+        162,
+        45,
+        104,
+        42
+      ],
+      "to": "bob@example.com",
+      "body": "Hey Bob, let's keep this between us! 🔐",
+      "sent_at": 1765786081,
+      "status": "Queued",
+      "ciphertext": "4AjlNGY29rg9a13BofCu1cIGg5hA+21sX+y7A7OpUBwkdvqWhv6R8TyFPD6S/wN6ikfOpPhCLpIAXwhVl3dsKn9lkZM1"
+    },
+    {
+      "id": [
+        121,
+        217,
+        70,
+        77,
+        159,
+        56,
+        66,
+        29,
+        168,
+        255,
+        58,
+        178,
+        13,
+        99,
+        14,
+        119
+      ],
+      "to": "charlie@example.com",
+      "body": "Top secret information: The answer is 42! 🎲",
+      "sent_at": 1765786081,
+      "status": "Queued",
+      "ciphertext": "EYnU852N9dzRKOjKzQJQqKPU6bN4YvmEZ9Gu/nuKQ+DE1fupnGOPsvFxeK/AsjpWCAFUZlLRVV+XhEYp2oTj2rv3THIKsYSyEfs="
+    }
+  ],
+  "incoming_messages": [],
+  "connected": true,
+  "last_connected": "2025-12-15T08:08:01.809659Z",
+  "pairing_code": null,
+  "events": [
+    {
+      "kind": "Registered",
+      "at": 1765786081
+    },
+    {
+      "kind": "Connected",
+      "at": 1765786081
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            158,
+            75,
+            195,
+            55,
+            40,
+            140,
+            79,
+            60,
+            149,
+            200,
+            22,
+            221,
+            38,
+            250,
+            130,
+            244
+          ],
+          "to": "alice@example.com",
+          "body": "Hello Alice! This is a secret message 🤫",
+          "sent_at": 1765786081,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786081
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "9e4bc337-288c-4f3c-95c8-16dd26fa82f4"
+      },
+      "at": 1765786081
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            69,
+            239,
+            40,
+            196,
+            187,
+            210,
+            79,
+            248,
+            176,
+            197,
+            215,
+            55,
+            162,
+            45,
+            104,
+            42
+          ],
+          "to": "bob@example.com",
+          "body": "Hey Bob, let's keep this between us! 🔐",
+          "sent_at": 1765786081,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786081
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "45ef28c4-bbd2-4ff8-b0c5-d737a22d682a"
+      },
+      "at": 1765786081
+    },
+    {
+      "kind": {
+        "MessageSent": {
+          "id": [
+            121,
+            217,
+            70,
+            77,
+            159,
+            56,
+            66,
+            29,
+            168,
+            255,
+            58,
+            178,
+            13,
+            99,
+            14,
+            119
+          ],
+          "to": "charlie@example.com",
+          "body": "Top secret information: The answer is 42! 🎲",
+          "sent_at": 1765786081,
+          "status": "Queued",
+          "ciphertext": null
+        }
+      },
+      "at": 1765786081
+    },
+    {
+      "kind": {
+        "MessageEncrypted": "79d9464d-9f38-421d-a8ff-3ab20d630e77"
+      },
+      "at": 1765786081
+    }
+  ],
+  "network": {
+    "endpoint": "https://chat.whatsmeow.test",
+    "last_handshake": null,
+    "latency_ms": null,
+    "status_code": null,
+    "error": null
+  },
+  "qr_login": null,
+  "media": []
+}

@@ -1,0 +1,67 @@
+{
+  "registered_jid": "qr-demo-user@s.whatsapp.net",
+  "encryption_keys": [
+    "derived-key-for-qr-demo-user@s.whatsapp.net"
+  ],
+  "device_name": "qr-auth-demo",
+  "contacts": [],
+  "outgoing_messages": [],
+  "incoming_messages": [],
+  "connected": false,
+  "last_connected": null,
+  "pairing_code": {
+    "code": "ZgwU73Y6",
+    "issued_at": 1765786075,
+    "expires_at": 1765786375
+  },
+  "events": [
+    {
+      "kind": "Registered",
+      "at": 1765786075
+    },
+    {
+      "kind": "PairingCodeIssued",
+      "at": 1765786075
+    },
+    {
+      "kind": {
+        "QrCodeGenerated": {
+          "token": "o59mjR2L1gqn2IEYI77pmabA",
+          "issued_at": 1765786075,
+          "expires_at": 1765786675,
+          "verified": false
+        }
+      },
+      "at": 1765786075
+    },
+    {
+      "kind": "QrCodeVerified",
+      "at": 1765786075
+    },
+    {
+      "kind": {
+        "QrCodeGenerated": {
+          "token": "NsYZGVb5KEzcuqdkLbABqWYl",
+          "issued_at": 1765786075,
+          "expires_at": 1765786675,
+          "verified": false
+        }
+      },
+      "at": 1765786075
+    }
+  ],
+  "network": {
+    "endpoint": "https://chat.whatsmeow.test",
+    "last_handshake": null,
+    "latency_ms": null,
+    "status_code": null,
+    "error": null
+  },
+  "qr_login": {
+    "token": "NsYZGVb5KEzcuqdkLbABqWYl",
+    "issued_at": 1765786075,
+    "expires_at": 1765786675,
+    "verified": false
+  },
+  "media": []
+}
