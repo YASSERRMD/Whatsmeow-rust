@@ -2,6 +2,8 @@
 //!
 //! Provides connection management to WhatsApp servers using WebSocket + Noise Protocol.
 
+pub mod handshake;
+
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
     connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream,
@@ -9,6 +11,8 @@ use tokio_tungstenite::{
 use futures::{SinkExt, StreamExt};
 
 use crate::crypto::{Cipher, NoiseHandshake, KeyPair};
+
+pub use handshake::{do_handshake, WhatsAppConnection, HandshakeError};
 
 /// WhatsApp WebSocket endpoints.
 pub mod endpoints {

@@ -28,7 +28,7 @@ hex = "0.4"
 
 # Networking (Phase 2)
 tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = "0.21"
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 futures = "0.3"
 
 # QR Code
@@ -39,3 +39,5 @@ clap = { version = "4.5", features = ["derive"] }
 
 # HTTP (for media)
 ureq = { version = "2.9", default-features = false, features = ["tls", "json"] }
+prost = "0.14.1"
+prost-types = "0.14.1"

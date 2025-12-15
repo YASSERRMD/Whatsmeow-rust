@@ -18,6 +18,7 @@ pub mod crypto;
 pub mod socket;
 pub mod store;
 pub mod protocol;
+pub mod proto;
 
 // Re-export existing scaffold modules (for backwards compat)
 mod client;
