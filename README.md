@@ -14,9 +14,9 @@ with configuration, session management, and a basic CLI workflow.
   issuance/verification, and AES-GCM message encryption helpers derived from
   your configured secret.
 - Command-line interface built with `clap` for registering a device, printing
-  configuration, connecting/disconnecting, generating pairing codes, sending
-  mock messages, recording received messages, and inspecting stored contacts or
-  history.
+  configuration, connecting/disconnecting, generating pairing codes that expire
+  after five minutes, sending mock messages, recording received messages, and
+  inspecting stored contacts or history.
 
 ## Usage
 
@@ -63,7 +63,7 @@ identifier.
   latency, status code, and any error message in the session based on a real
   HTTP request to the configured endpoint.
 - Call `generate-qr` followed by `verify-qr --token <token>` to simulate QR
-  login token issuance and verification.
+  login token issuance and verification. Expired QR tokens are rejected.
 - Messages are encrypted with AES-256-GCM using a key derived from your
   `encryption_secret` (SHA-256). The stored ciphertext includes the nonce and
   authentication tag; use `decrypt-message --id <message-id>` to view the
