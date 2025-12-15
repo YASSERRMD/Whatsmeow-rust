@@ -66,63 +66,66 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             loop {
                 match timeout(Duration::from_secs(30), conn.recv()).await {
                     Ok(Ok(data)) => {
-                        println!("📨 Received {} bytes: {:02x?}...", data.len(), &data[..data.len().min(20)]);
+                        println!("📨 Received {} bytes", data.len());
+                        println!("   Raw: {:02x?}", &data[..data.len().min(30)]);
                         
                         // Skip first byte (flags) if it's 0x00
                         let decode_data = if !data.is_empty() && data[0] == 0 {
+                            println!("   Skipping flags byte");
                             &data[1..]
                         } else {
                             &data[..]
                         };
                         
+                        if decode_data.is_empty() {
+                            println!("   Empty payload");
+                            continue;
+                        }
+                        
+                        // Print basic structure info
+                        if decode_data.len() >= 2 && decode_data[0] == 0xf8 {
+                            println!("   Binary XML list with {} items", decode_data[1]);
+                        }
+                        
                         // Try to decode as binary node
                         match whatsmeow_rust::decode(decode_data) {
                             Ok(node) => {
-                                println!("   ✓ Tag: {}", node.tag);
+                                println!("   ✓ Decoded: <{}>", node.tag);
                                 
                                 // Print attributes
                                 for (key, value) in &node.attrs {
-                                    println!("     {}: {:?}", key, value);
+                                    println!("     @{}: {:?}", key, value);
                                 }
                                 
-                                // Check if it's a message
-                                if node.tag == "message" {
-                                    if let Some(body) = node.get_child_by_tag("body") {
-                                        if let Some(text_bytes) = body.get_bytes() {
-                                            let text = String::from_utf8_lossy(text_bytes);
-                                            println!("   📝 Message: {}", text);
-                                            
-                                            // Echo back
-                                            let from = node.get_attr_str("from").unwrap_or("unknown");
-                                            println!("   🔁 Echoing back to: {}", from);
-                                            
-                                            // Build echo message
-                                            let echo_text = format!("Echo: {}", text);
-                                            let mut echo_node = whatsmeow_rust::Node::new("message");
-                                            echo_node.set_attr("to", from);
-                                            echo_node.set_attr("type", "text");
-                                            echo_node.set_attr("id", format!("{:X}", rand::random::<u64>()));
-                                            
-                                            let mut body_node = whatsmeow_rust::Node::new("body");
-                                            body_node.set_bytes(echo_text.as_bytes().to_vec());
-                                            echo_node.add_child(body_node);
-                                            
-                                            let encoded = whatsmeow_rust::encode(&echo_node);
-                                            // Add flags byte
-                                            let mut frame = vec![0u8];
-                                            frame.extend_from_slice(&encoded);
-                                            
-                                            if let Err(e) = conn.send(&frame).await {
-                                                println!("   ⚠ Failed to send: {}", e);
-                                            } else {
-                                                println!("   ✓ Echo sent!");
+                                // Print children
+                                if let Some(children) = node.get_children() {
+                                    for child in children {
+                                        println!("     <{}>", child.tag);
+                                    }
+                                }
+                                
+                                // Handle specific message types
+                                match node.tag.as_str() {
+                                    "iq" => {
+                                        println!("   📋 IQ stanza received");
+                                    }
+                                    "message" => {
+                                        if let Some(body) = node.get_child_by_tag("body") {
+                                            if let Some(text_bytes) = body.get_bytes() {
+                                                let text = String::from_utf8_lossy(text_bytes);
+                                                println!("   📝 Message: {}", text);
                                             }
                                         }
                                     }
+                                    "success" => {
+                                        println!("   🎉 Authentication successful!");
+                                    }
+                                    _ => {}
                                 }
                             }
                             Err(e) => {
-                                println!("   Could not decode: {}", e);
+                                println!("   ⚠ Decode error: {}", e);
+                                println!("   (Data may be incomplete or fragmented)");
                             }
                         }
                     }
@@ -131,7 +134,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         break;
                     }
                     Err(_) => {
-                        // Timeout - send keep-alive
                         println!("⏰ Timeout (no messages in 30s)");
                     }
                 }
