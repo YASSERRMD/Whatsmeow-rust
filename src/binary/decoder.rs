@@ -180,59 +180,70 @@ impl<'a> Decoder<'a> {
         }
     }
 
+    /// Read list size from token
+    fn read_list_size(&mut self, token: u8) -> Result<usize, DecodeError> {
+        match token {
+            0x00 => Ok(0),
+            0xF8 => Ok(self.read_byte()? as usize),
+            0xF9 => Ok(self.read_int(2)?),
+            _ => Err(DecodeError(format!("expected list token (f8/f9), got 0x{:02x}", token))),
+        }
+    }
+
     /// Read a node
     fn read_node(&mut self) -> Result<Node, DecodeError> {
-        // Read header
-        let header = self.read_byte()?;
-        let num_attrs = (header >> 1) as usize;
-        let has_content = (header & 1) != 0;
+        // Node is always a list
+        let token = self.read_byte()?;
+        let size = self.read_list_size(token)?;
 
-        // Read tag
+        if size == 0 {
+            return Err(DecodeError("invalid empty list for node".to_string()));
+        }
+
+        // 1. Read Tag
         let tag_marker = self.read_byte()?;
         let tag = self.read_string(tag_marker)?;
 
-        // Read attributes
         let mut attrs = Attrs::new();
-        for _ in 0..num_attrs {
+        
+        // Number of attribute pairs = (size - 1) / 2
+        let num_attr_pairs = (size - 1) / 2;
+        
+        for _ in 0..num_attr_pairs {
             let key_marker = self.read_byte()?;
             let key = self.read_string(key_marker)?;
             let value = self.read_attr_value()?;
             attrs.insert(key, value);
         }
 
+        // If (size - 1) is odd, there is content
+        let has_content = (size - 1) % 2 == 1;
+
         // Read content
         let content = if has_content {
             let content_marker = self.read_byte()?;
             match content_marker {
-                0xF8 => {
-                    // List of children
-                    let len_marker = self.read_byte()?;
-                    let len = match len_marker {
-                        n if n < 0xFC => n as usize,
-                        0xFC => self.read_byte()? as usize,
-                        0xFD => self.read_int(2)?,
-                        _ => return Err(DecodeError("invalid list length".to_string())),
-                    };
+                0xF8 | 0xF9 => {
+                    // List -> Children
+                    let len = self.read_list_size(content_marker)?;
                     let mut children = Vec::with_capacity(len);
                     for _ in 0..len {
                         children.push(self.read_node()?);
                     }
                     NodeContent::Children(children)
                 }
-                0xFF => {
+                0xFF | 0xFC | 0xFD | 0xFE => {
                     // Bytes
-                    let len_marker = self.read_byte()?;
-                    let len = match len_marker {
-                        n if n < 0xFC => n as usize,
+                    let len = match content_marker {
                         0xFC => self.read_byte()? as usize,
                         0xFD => self.read_int(2)?,
                         0xFE => self.read_int(3)?,
-                        _ => return Err(DecodeError("invalid bytes length".to_string())),
+                        _ => return Err(DecodeError("invalid bytes length".to_string())), // FF shouldn't happen alone?
                     };
                     NodeContent::Bytes(self.read_bytes(len)?)
                 }
                 _ => {
-                    // Single child or string content - treat as bytes
+                    // String content - treat as bytes
                     let s = self.read_string(content_marker)?;
                     NodeContent::Bytes(s.into_bytes())
                 }

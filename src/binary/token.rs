@@ -470,7 +470,8 @@ mod tests {
     #[test]
     fn test_double_token_lookup() {
         assert_eq!(get_double_token(0, 0), Some("read-self"));
-        assert_eq!(get_double_token(0, 79), Some("features"));
+        assert_eq!(get_double_token(0, 78), Some("features"));
+        assert_eq!(get_double_token(0, 79), Some("wed"));
         assert_eq!(get_double_token(1, 0), Some("reject"));
     }
 

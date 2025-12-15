@@ -208,17 +208,17 @@ pub fn make_web_client_payload(push_name: Option<&str>) -> ClientPayload {
             platform: Some(platform::WEB),
             app_version: Some(AppVersion {
                 primary: Some(2),
-                secondary: Some(24),
-                tertiary: Some(6),
+                secondary: Some(3000),
+                tertiary: Some(1012170356), // Common build number in traces
                 quaternary: Some(0),
                 quinary: Some(0),
             }),
             mcc: Some("000".to_string()),
             mnc: Some("000".to_string()),
-            os_version: Some("0.1.0".to_string()),
-            manufacturer: Some("Whatsmeow".to_string()),
-            device: Some("Rust".to_string()),
-            os_build_number: Some("0.1.0".to_string()),
+            os_version: Some("10.15.7".to_string()), // macOS Catalina
+            manufacturer: Some("Google Chrome".to_string()),
+            device: Some("macOS".to_string()),
+            os_build_number: Some("121.0.6167.184".to_string()), // Chrome build
             phone_id: None,
             release_channel: Some(release_channel::RELEASE),
             locale_language_iso_639_1: Some("en".to_string()),
@@ -227,7 +227,7 @@ pub fn make_web_client_payload(push_name: Option<&str>) -> ClientPayload {
         }),
         web_info: Some(WebInfo {
             ref_token: None,
-            version: Some("2.2406.0".to_string()),
+            version: Some("2.3000.1012170356".to_string()),
             web_sub_platform: Some(WebSubPlatform {
                 web_sub_platform: Some(web_sub_platform::WEB_BROWSER),
             }),
